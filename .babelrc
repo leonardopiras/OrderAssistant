@@ -1,0 +1,13 @@
+{
+    "plugins": [
+        ["module-resolver", {
+            "root": ["./"],
+            "alias": {
+              "@components" : "./components",
+              "@screens" : "./components/screens",
+              "@styles": "./assets/styles",
+              "@images": "./assets/images"
+            }
+          }]
+    ]
+  }
