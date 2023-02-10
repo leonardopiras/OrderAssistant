@@ -139,7 +139,7 @@ export default function CreateRoomDialog({
           >
             <FlatList
               style={myStyles.configList.list}
-              data={[]}//configList}
+              data={configList}
               ItemSeparatorComponent={<View style={{ margin: 5, backgroundColor: colors.transpBlack }} />}
               renderItem={({ item, index, separators }) => UIListItem(item)}
               ListEmptyComponent={UIEmptyList}
