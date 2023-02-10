@@ -36,7 +36,7 @@ export default class OAFullScreen extends Component {
                 iUnderstand: "Ho capito"
             },
             loading: false,
-
+            showScreen: false,
         }
     }
     componentDidMount(){
@@ -56,6 +56,10 @@ export default class OAFullScreen extends Component {
         if (instance === null || typeof instance !== "object")
             return;
         instance.setState({loading: loading});
+    }
+
+    static showWarning = (description) => {
+        OAFullScreen.showDialog({type: "warning", description: description});
     }
 
 
@@ -84,7 +88,10 @@ export default class OAFullScreen extends Component {
             } else if (type === "error") {
                 title = title ? title : instance.state.sentences.error;
                 primaryBtn = instance.state.sentences.iUnderstand;
-            } else 
+            } else if (type === "warning") {
+                title = title ? title : instance.state.sentences.warning;
+                primaryBtn = instance.state.sentences.iUnderstand;
+            } else
                 console.error("unknown type in OAFullScreen " + type);
         }
 
@@ -92,6 +99,12 @@ export default class OAFullScreen extends Component {
             primaryBtn: primaryBtn, secondaryBtn: secondaryBtn, ternaryBtn: ternaryBtn, 
             onPressPrimaryBtn: onPressPrimaryBtn, onPressSecondaryBtn: onPressSecondaryBtn,
             onPressTernaryBtn: onPressTernaryBtn, type: type });
+    }
+
+    static showBlackScreen = (show) => {
+        if (instance === null || typeof instance !== "object")
+            return;
+        instance.setState({showScreen: show});
     }
 
     closeDialog = () => {
@@ -104,7 +117,7 @@ export default class OAFullScreen extends Component {
     handlePrimary = () => {
         if (typeof this.state.onPressPrimaryBtn === "function")
             this.state.onPressPrimaryBtn();
-        if (["confirmAction", "error"].includes(this.state.type))
+        if (["confirmAction", "error", "warning"].includes(this.state.type))
             this.closeDialog();
     }
 
@@ -162,14 +175,17 @@ export default class OAFullScreen extends Component {
                 style={{
                     position: "absolute", alignSelf: "center",
                     backgroundColor: "white", borderRadius: 30,
+                    zIndex: 200,
                 }}
                 color={colors.color_2}
                 size={'large'}
             />);
     }
 
+  
+
     render() {
-        if (!this.state.diagVisible && !this.state.loading)
+        if (!this.state.diagVisible && !this.state.loading && !this.state.showScreen)
             return;
 
         return (
@@ -178,6 +194,7 @@ export default class OAFullScreen extends Component {
             style={myStyles.containerExternal}>
                {this.state.diagVisible ? this.UIDialog() : null}
                {this.state.loading ? this.UIIndicator() : null}   
+               {this.state.customChildren ? this.state.customChildren : null}
 
             </Pressable>
         );
@@ -232,10 +249,10 @@ const myStyles = StyleSheet.create({
         bottom: 0,
         right: 0,
         left: 0,
-        zIndex: 100,
+        zIndex: 2,
         width: "100%", 
         height: "100%",
-        backgroundColor: "rgba(0,0,0,0.3)",
+        backgroundColor: "rgba(0,0,0,0.7)",
     },
     conteinerInternal: {
         paddingHorizontal: 20,
@@ -247,7 +264,7 @@ const myStyles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'grey',
         elavation: 30,
-        zIndex: 101
+        zIndex: 102
     },
     
 });

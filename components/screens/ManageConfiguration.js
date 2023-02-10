@@ -96,17 +96,23 @@ export default function ManageConfiguration({ route, navigation }) {
   }
 
   useEffect(() => {
-    if (itemTypeList && itemTypeList.length > 0) {
-      const sesnCats = []
-      itemTypeList.forEach(el => {
-        el.itemCats.forEach(cat => {
-          if (!sesnCats.includes(cat))
-            sesnCats.push(cat);
+    setSessionCats(prev => {
+      let tempCats = prev ? prev : [];
+      if (itemTypeList && itemTypeList.length > 0) {
+        itemTypeList.forEach(el => {
+          el.itemCats.forEach(cat => tempCats.push(cat));
+        })
+      }
+      if (typeof workStations === "object") {
+        Object.values(workStations).forEach(catList => {
+          if (typeof Array.isArray(catList))
+            catList.forEach(cat => tempCats.push(cat));
         });
-      });
-      setSessionCats(sesnCats);
-    }
-  }, [itemTypeList]);
+      }
+      return [...new Set(tempCats)];
+    });
+
+  }, [itemTypeList, workStations]);
 
 
   const loadItemTypeConfiguration = (confName) => {
@@ -250,13 +256,15 @@ export default function ManageConfiguration({ route, navigation }) {
     })
   }
 
-  const onConfirmWorkStationDialog = (workStationName, affectedCats) => {
-    setWorkStations(prev => {
+  const onConfirmWorkStationDialog = (workStationName, affectedCats, previousName) => {
+    setWorkStations(prev => {        
       const neww = JSON.parse(JSON.stringify(prev));
+      if (workStationName !== previousName)
+        delete neww[previousName];
       if (affectedCats && affectedCats.length > 0)
         neww[workStationName] = affectedCats;
       else
-        delete neww[workStationName];
+        delete neww[workStationName + "mamma"];
       return neww;
     });
     setWorkStationDialogInfo({ ...workStationDialogInfo, isOpen: false });

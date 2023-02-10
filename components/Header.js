@@ -127,7 +127,7 @@ export default class Header extends Component {
     static goBack = () => {
         if (naviRef.isReady()) {
             const navState = naviRef.current.getState();
-            if (navState.index > 0) {
+            if (typeof navState === "object" && navState.index > 0) {
                 const curr = Header.parseScreen(navState.routes[navState.index].name);
                 const next = Header.parseScreen(navState.routes[(navState.index-1)].name);
                 if (typeof backPressCbs[curr] !== "function" || backPressCbs[curr]()) {

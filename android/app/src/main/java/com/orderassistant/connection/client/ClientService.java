@@ -34,6 +34,8 @@ import java.util.TimerTask;
 import java.util.HashMap;
 import java.util.Timer;
 
+import android.provider.Settings.Secure;
+
 public class ClientService extends AbstractService {
 
     protected static final String ADDRESS = "address";
@@ -109,7 +111,8 @@ public class ClientService extends AbstractService {
     protected boolean serviceOnCreate(Intent intent) {
         if (setStartUpParamsFromIntent(intent)) {
             this.startUpFinished = false; 
-            this.wsClient = new OAWSClient(address, port, username, this, module);
+            String deviceId = getDeviceId();
+            this.wsClient = new OAWSClient(address, port, username, deviceId, this, module);
         }
         return isCheckableGood(wsClient);
     }
@@ -155,10 +158,16 @@ public class ClientService extends AbstractService {
     protected String getNotificationTitle() {
         return roomName;
     }
+
     @Override
     protected String getNotificationText(){
         return "Connesso correttamente a " + roomName;
     }
+
+    protected String getDeviceId() {
+        return Secure.getString(getContentResolver(), Secure.ANDROID_ID);
+    }
+
     
 
     public static boolean isServiceRunning() {

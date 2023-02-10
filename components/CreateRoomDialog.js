@@ -9,23 +9,21 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 
 
-
-import { Radio, RadioGroup } from '@ui-kitten/components';
-
 import styles from '@styles/DefaultStyles';
 import colors from '@styles/Colors';
 import CustomDialog from '@components/CustomDialog';
 import OATextInput from '@components/OATextInput';
 import OAInput from '@components/OAInput';
+import OAButton from '@components/OAButton';
 
 const { ManageConfigurationsModule } = NativeModules;
 
 export default function CreateRoomDialog({
-  onConfirmRoom, onRequestClose, isVisible
+  onConfirmRoom, onRequestClose, isVisible, goToManageConfiguration
 }) {
 
   const [roomName, setRoomName] = useState("");
-  const [errRoomName, setErrRoomName] = useState(false);
+  const [error, setError] = useState("");
   const [configList, setConfigList] = useState();
   const [selectedConfig, setSelectedConfig] = useState(0);
 
@@ -35,7 +33,11 @@ export default function CreateRoomDialog({
     cancel: "Annulla",
     roomName: "Nome stanza",
     emptyField: "Nome stanza vuoto",
-    configuration: "Configurazione"
+    configuration: "Configurazione",
+    chooseRoomNameWarning: "Devi scegliere un nome per la stanza",
+    uHaveToChooseConfig: "Devi scegliere una configurazione",
+    configurationNotFound: "Configurazione non trovata",
+    createConfig: "Crea configurazione"
   });
 
   useEffect(() => {
@@ -54,18 +56,26 @@ export default function CreateRoomDialog({
     });
   }
 
-  const changeSelectedConfig =(configName) => {
+  const changeSelectedConfig = (configName) => {
     setSelectedConfig(configName);
     if (roomName === "")
       setRoomName(configName);
   }
 
   const onPressPrimaryBtn = () => {
-    const roomNameOk = roomName && roomName.length > 0;
-    const configOk = selectedConfig && selectedConfig.length > 0;
-    if (roomNameOk && configOk)
-      onRequestClose();
-      onConfirmRoom({roomName: roomName, configurationName: selectedConfig});
+    if (roomName && roomName.length > 0) {
+      if (selectedConfig && selectedConfig.length > 0) {
+        NativeModules.ManageConfigurationsModule.configurationExist(selectedConfig, exist => {
+          if (exist) {
+            onRequestClose();
+            onConfirmRoom({ roomName: roomName, configurationName: selectedConfig });
+          } else
+            setError(sentences.configurationNotFound);
+        });
+      } else
+        setError(sentences.uHaveToChooseConfig);
+    } else
+      setError(sentences.chooseRoomNameWarning);
   }
 
   const UIListItem = (item) => {
@@ -78,6 +88,24 @@ export default function CreateRoomDialog({
       <Pressable onPress={() => changeSelectedConfig(item)}>
         <Text style={[styles.text,myStyles.configList.item, selectedStyle]}>{item}</Text>
       </Pressable>
+    );
+  }
+
+  const handlePressEmptyBtn = () => {
+    onRequestClose();
+    goToManageConfiguration();
+  }
+
+  const UIEmptyList = () => {
+    return (
+      <OAButton
+      onPress={handlePressEmptyBtn}
+      title={sentences.createConfig}
+      isHorizontal={true}
+      style={[{ alignSelf: "center", paddingEnd: 13 }]}
+      icon={"plus-thick"}
+      iconProps={{ size: 20, style: { marginRight: 5 } }}
+    />
     );
   }
 
@@ -99,8 +127,6 @@ export default function CreateRoomDialog({
             value={roomName}
             setValue={setRoomName}
             label={sentences.roomName}
-            showError={errRoomName}
-            errorMsg={sentences.emptyField}
             style={null}
           />
 
@@ -113,12 +139,16 @@ export default function CreateRoomDialog({
           >
             <FlatList
               style={myStyles.configList.list}
-              data={configList}
+              data={[]}//configList}
               ItemSeparatorComponent={<View style={{ margin: 5, backgroundColor: colors.transpBlack }} />}
               renderItem={({ item, index, separators }) => UIListItem(item)}
+              ListEmptyComponent={UIEmptyList}
             />
 
           </OAInput>
+          <Text style={[styles.text, {color: "red", flex: 1, height: 50, textAlignVertical: "center"}]}>
+            {error}
+          </Text>
 
 
 

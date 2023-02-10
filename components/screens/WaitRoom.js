@@ -13,7 +13,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import styles from '@styles/DefaultStyles';
 import CustomDialog from '@components/CustomDialog';
 import TextInputDialog from '@components/TextInputDialog';
-import Header, {screens} from "@components/Header";
+import Header, { screens } from "@components/Header";
 import OAButton from '@components/OAButton';
 import colors from "@styles/Colors";
 import CreateRoomDialog from '@components/CreateRoomDialog';
@@ -24,7 +24,7 @@ import OAFullScreen from '@components/OAFullScreen';
 const { UsernameModule, OAMainModule } = NativeModules;
 
 const clientStartUpCode = {
-  ALL_GOOD: 0, 
+  ALL_GOOD: 0,
   GENERIC_ERROR: 1,
   NAME_ALREADY_IN_USE: 2,
   PARSER_ERROR: 3,
@@ -33,7 +33,7 @@ const clientStartUpCode = {
 }
 
 const serverStartUpCode = {
-  ALL_GOOD: 0, 
+  ALL_GOOD: 0,
   GENERIC_ERROR: 1,
   ERROR_DOUBLE_START: 2,
   ERROR_BUSY_PORT: 3,
@@ -83,30 +83,36 @@ export default function WaitRoom({ navigation, route }) {
     serverErrorWifi: "Problemi con la rete wifi",
     doUWantStoreConfiguration: "Vuoi salvare la configurazione?",
     loadService: "Carica servizio in sospeso",
-    serverErrorLoadPrevWS: "Il servizio non è stato salvato correttamente"
+    serverErrorLoadPrevWS: "Il servizio non è stato salvato correttamente",
   });
 
   useEffect(() => {
     Header.initScreen(screens.WaitRoom, {
       onResume: handleResume,
       headerProps: {
-        profilePic: true, 
+        profilePic: true,
         right: (UIRightHeader()),
         onPressProfilePic: () => setModalUsernameInfo({ isOpen: true, firstSetUp: false })
       }
     });
+    checkUsername();
+
 
     return () => {
       Header.removeScreen(screens.WaitRoom);
     }
   }, []);
 
+  useEffect(() => {
+    if (!isWifiGood)
+      OAFullScreen.showWarning(sentences.wifiDialogDescription);
+  }, [isWifiGood])
+
   const handleResume = () => {
     OAMainModule.isWifiGood(good => {
       setWifiIsGood(good);
       if (good) {
         findServers();
-        checkUsername();
         OAMainModule.isWorkServiceRunning(running => {
           setWorkServiceRunning(running);
         });
@@ -114,12 +120,14 @@ export default function WaitRoom({ navigation, route }) {
           setPreviousWorkServicePresent(isPresent);
         });
       }
-      else 
-        setTimeout(()=> {
+      else {
+        setTimeout(() => {
           handleResume();
-        }, 3000)
+        }, 3000);
+      }
     });
   };
+
 
   const checkUsername = async () => {
     UsernameModule.loadUsername(value => {
@@ -141,10 +149,8 @@ export default function WaitRoom({ navigation, route }) {
   };
 
   const onConfirmRoom = (roomInfo) => {
-    if (roomInfo.roomName) {
-      OAMainModule.startServer(roomInfo.roomName, username,
-        roomInfo.configurationName, handleWorkServiceCreationReturn);
-    } else log("RoomName not found");
+    OAMainModule.startServer(roomInfo.roomName, username,
+      roomInfo.configurationName, handleWorkServiceCreationReturn);
   };
 
   const startServerPreviousWorkService = () => {
@@ -158,7 +164,8 @@ export default function WaitRoom({ navigation, route }) {
       OAFullScreen.showDialog({
         type: "error",
         description: sentences.serverNotStarted,
-        description1: getServerErrorCauseStartUp(exitCode)});            
+        description1: getServerErrorCauseStartUp(exitCode)
+      });
     }
   }
 
@@ -184,8 +191,9 @@ export default function WaitRoom({ navigation, route }) {
           OAFullScreen.showDialog({
             type: "error",
             description: sentences.clientNotStartedError,
-            description1: getClientErrorCauseStartUp(exitCode)});
-          }
+            description1: getClientErrorCauseStartUp(exitCode)
+          });
+        }
       });
   }
 
@@ -205,7 +213,7 @@ export default function WaitRoom({ navigation, route }) {
     if (code === clientStartUpCode.NAME_ALREADY_IN_USE)
       return sentences.clientErrorName;
     else if (code === clientStartUpCode.PARSER_ERROR)
-       return sentences.clientErrorParser;
+      return sentences.clientErrorParser;
     else if (code === clientStartUpCode.TIMER_EXCEDEED)
       return sentences.clientErrorTimer;
     else if (code === clientStartUpCode.ECONNREFUSED)
@@ -223,17 +231,17 @@ export default function WaitRoom({ navigation, route }) {
 
 
   const findServers = async () => {
-    setServerList(prev => {return []});
-    setServersDetails(prev => {return {}});
+    setServerList(prev => { return [] });
+    setServersDetails(prev => { return {} });
     setRefreshing(true);
     const eventEmitter = new NativeEventEmitter(NativeModules.OAMainModule);
     const serverFoundListener = eventEmitter.addListener("NewServerFound", (serverInfo) => {
-      log(serverInfo.Address +":"+ serverInfo.Port);
-      setServerList(prev => {return [...prev, serverInfo]});
+      log(serverInfo.Address + ":" + serverInfo.Port);
+      setServerList(prev => { return [...prev, serverInfo] });
     });
     const serverDetailsListener = eventEmitter.addListener("NewServerDetails", (det) => {
       const roomName = det.roomName;
-      setServersDetails(prev => {return {...prev, [roomName]: det}});
+      setServersDetails(prev => { return { ...prev, [roomName]: det } });
     });
     OAMainModule.findServers(5000, () => {
       serverFoundListener.remove();
@@ -251,8 +259,8 @@ export default function WaitRoom({ navigation, route }) {
 
   const UIRightHeader = () => {
     return (
-      <View style={{flexDirection: "row"}}>
-      {/* <Pressable
+      <View style={{ flexDirection: "row" }}>
+        {/* <Pressable
       >
          <Icon
           name={"reload"}
@@ -262,16 +270,16 @@ export default function WaitRoom({ navigation, route }) {
         />
       </Pressable>
       <View style={{width: 10}}/> */}
-      <Pressable
-        onPress={() => navigation.navigate("ConfigurationList")}
-      >
-         <Icon
-          name={"file-cog-outline"}
-          color={"white"}
-          size={25}
-          style={{alignSelf: "center"}}
-        />
-      </Pressable> 
+        <Pressable
+          onPress={() => navigation.navigate("ConfigurationList")}
+        >
+          <Icon
+            name={"file-cog-outline"}
+            color={"white"}
+            size={25}
+            style={{ alignSelf: "center" }}
+          />
+        </Pressable>
       </View>
     );
   }
@@ -285,7 +293,7 @@ export default function WaitRoom({ navigation, route }) {
           name={iconName}
           color={color}
           size={size}
-          style={{alignSelf: "center"}}
+          style={{ alignSelf: "center" }}
         />
       </View>
     );
@@ -293,7 +301,7 @@ export default function WaitRoom({ navigation, route }) {
 
   const UIEmptyList = () => {
     return (
-      <Text style={[styles.text, {alignSelf: "center", color: "white", fontSize: 20, margin: 10}]}>{sentences.noRoom_1}</Text>
+      <Text style={[styles.text, { alignSelf: "center", color: "white", fontSize: 20, margin: 10 }]}>{sentences.noRoom_1}</Text>
     )
   }
 
@@ -314,11 +322,11 @@ export default function WaitRoom({ navigation, route }) {
         </View>
         <View style={myStyles.serverListItem.row}>
           {hasDetails ?
-            <View style={{flexWrap: "wrap", flexDirection: "row", justifyContent: "center"}}>
+            <View style={{ flexWrap: "wrap", flexDirection: "row", justifyContent: "center" }}>
               {details.clients.map((el, indx) => {
-                return (<Text 
+                return (<Text
                   key={el}
-                  style={[styles.text, {flexBasis: "50%"}]}>{el}</Text>);
+                  style={[styles.text, { flexBasis: "50%" }]}>{el}</Text>);
               })}
             </View>
             : null}
@@ -347,79 +355,73 @@ export default function WaitRoom({ navigation, route }) {
       onConfirmRoom={onConfirmRoom}
       onRequestClose={() => setRoomDialogOpen(false)}
       isVisible={createRoomDialogIsOpen}
+      goToManageConfiguration={() => navigation.navigate("ConfigurationList")}      
     />) : null;
 
-  const UIWifiDialog = !isWifiGood ? (
-    <CustomDialog
-      title={sentences.wifiDialogTitle}
-      description={sentences.wifiDialogDescription}
-      isVisible={!isWifiGood}
-    />) : null;
 
-  
   return (
-    <View style={styles.container}>
-      {!isWifiGood ? UIWifiDialog :
-        <>
-          {UIModalUsername}
-          {UICreateRoomDialog}
-          <>
-          <View
-            style={myStyles.serverList}
-          >
-            <FlatList
-              style={{flex: 1}}
-              data={serverList}
-              ItemSeparatorComponent={<View style={{ margin: 5, alignSelf: "stretch", height: 1, backgroundColor: colors.transpBlack }} />}
-              ListEmptyComponent={() => UIEmptyList()}
-              renderItem={({ item, index, separators }) => UIServerListItem(item)}
-              refreshControl={<RefreshControl
-                refreshing={refreshing}
-                onRefresh={findServers} />}
-            />
-              {
-              isWorkServiceRunning ? (
-                <Pressable
-                  style={{position: "absolute", top: 0, bottom: 0, right: 0, left: 0, borderRadius: 20,
-                  backgroundColor: colors.transpBlack, justifyContent: "flex-end", alignItems: "center"}}
-                >
+    <>
+      {UICreateRoomDialog}
+      {UIModalUsername}
+      <View style={styles.container}>
+        <View
+          style={myStyles.serverList}
+        >
+          <FlatList
+            style={{ flex: 1 }}
+            data={serverList}
+            ItemSeparatorComponent={<View style={{ margin: 5, alignSelf: "stretch", height: 1, backgroundColor: colors.transpBlack }} />}
+            ListEmptyComponent={() => UIEmptyList()}
+            renderItem={({ item, index, separators }) => UIServerListItem(item)}
+            refreshControl={<RefreshControl
+              refreshing={refreshing}
+              onRefresh={findServers} />}
+          />
+          {
+            isWorkServiceRunning ? (
+              <Pressable
+                style={{
+                  position: "absolute", top: 0, bottom: 0, right: 0, left: 0, borderRadius: 20,
+                  backgroundColor: colors.transpBlack, justifyContent: "flex-end", alignItems: "center"
+                }}
+              >
 
-                
+
                 <OAButton
-                onPress={() => navigation.navigate("WorkService")}
-                title={sentences.resumeWorkService}
-                isHorizontal={true}
-                style={[{paddingHorizontal: 20, paddingVertical: 20, margin:40 }]}
-                icon={"play"}
-                iconProps={{ size: 20, style: { marginRight: 5 } }}        
-              />
+                  onPress={() => navigation.navigate("WorkService")}
+                  title={sentences.resumeWorkService}
+                  isHorizontal={true}
+                  style={[{ paddingHorizontal: 20, paddingVertical: 20, margin: 40 }]}
+                  icon={"play"}
+                  iconProps={{ size: 20, style: { marginRight: 5 } }}
+                />
               </Pressable>
-              ) : null
-            }
-            </View>
-          
-            {
-              isPreviousWorkServicePresent ? (
-                <OAButton
-                onPress={() => startServerPreviousWorkService()}
-                title={sentences.loadService}
-                isHorizontal={true}
-                style={[myStyles.bottomBtns.btn, {paddingHorizontal: 50, paddingVertical: 20, }]}
-                icon={"file-upload"}
-                iconProps={{ size: 20, style: { marginRight: 5 } }}        
-              />
-              ) : null
-            }
-            <View style={myStyles.bottomBtns}>
-              <OAButton
-                onPress={openRoomNameDialog}
-                title={sentences.createRoom}
-                image={require('@images/icons/plus.png')}
-                imageStyle={{ width: 25, height: 25 }}
-                isHorizontal={true}
-                style={myStyles.bottomBtns.btn}
-              />
-              {/* <OAButton
+            ) : null
+          }
+        </View>
+
+        {
+          isPreviousWorkServicePresent ? (
+            <OAButton
+              onPress={() => startServerPreviousWorkService()}
+              title={sentences.loadService}
+              isHorizontal={true}
+              style={[myStyles.bottomBtns.btn, { paddingHorizontal: 50, paddingVertical: 20, }]}
+              icon={"file-upload"}
+              iconProps={{ size: 20, style: { marginRight: 5 } }}
+            />
+          ) : null
+        }
+        <View style={myStyles.bottomBtns}>
+          <OAButton
+            onPress={openRoomNameDialog}
+            title={sentences.createRoom}
+            image={require('@images/icons/plus.png')}
+            imageStyle={{ width: 25, height: 25 }}
+            isHorizontal={true}
+            style={myStyles.bottomBtns.btn}
+          />
+          {/* <OAButton
                 onPress={findServers}
                 title={sentences.reload}
                 image={require('@images/icons/reload.png')}
@@ -428,11 +430,9 @@ export default function WaitRoom({ navigation, route }) {
                 style={myStyles.bottomBtnsBtn}
 
               /> */}
-            </View>
-          </>
-
-        </>}
-    </View>
+        </View>
+      </View>
+    </>
   );
 }
 

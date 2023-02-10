@@ -44,7 +44,7 @@ import com.orderassistant.models.*;
 import com.orderassistant.connection.*;
 import com.orderassistant.connection.OAMessage.*;
 import com.orderassistant.connection.client.ClientService.StartUpReturnCode;
-
+import com.orderassistant.connection.server.AbstractWSServer;
 
 import com.google.gson.Gson;
 
@@ -53,7 +53,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
     protected static final String TAG = "OA_WSClient";
 	protected static final int EXIT_CODE_SERVER_LOST = 1006; 
 	protected static final long START_UP_TIMER_DELAY_IN_MILLIS = 6000L;
-	protected static final int CONNECTON_LOST_TIMEOUT_IN_SEC = 30;
+	protected static final int CONNECTON_LOST_TIMEOUT_IN_SEC = 5;
 
 	public static OAWSClient instance;
 	protected String username;
@@ -70,14 +70,17 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 
 	protected boolean isGood = true;
 
+	protected String deviceId;
 
-	public OAWSClient(String address, int port, String username, ClientService service, OAModule module) {
-		super(createUri(address, port), getHeader(username));
+
+	public OAWSClient(String address, int port, String username, String deviceId, ClientService service, OAModule module) {
+		super(createUri(address, port), createHeader(username, deviceId));
 		this.callbacksMap = new ConcurrentHashMap<>();
 		setConnectionLostTimeout(CONNECTON_LOST_TIMEOUT_IN_SEC);
 		this.username = username;
 		this.module = module; 
 		this.service = service;
+		this.deviceId = deviceId;
 
 
 		connect();
@@ -101,9 +104,10 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 		return null;
 	}
 
-	private static Map<String,String> getHeader(String username) {
+	private static Map<String, String> createHeader(String username, String deviceId) {
 		Map<String, String> httpHeaders = new HashMap<String, String>();
-        httpHeaders.put("Cookie", "username=" + username);
+		httpHeaders.put(AbstractWSServer.HEADER_USERNAME, username);
+		httpHeaders.put(AbstractWSServer.HEADER_DEVICE_ID, deviceId);
 		return httpHeaders;
 	}
 
@@ -160,10 +164,8 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 	/*****************************************
      * OAConnection implementation
      *****************************************/
-	@Override
 	public String getUsername() {
 		return username;
-
 	}
 
 	@Override

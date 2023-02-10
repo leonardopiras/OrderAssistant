@@ -72,7 +72,6 @@ public class Utils {
         NetworkCapabilities caps = cm.getNetworkCapabilities(net);
 
         boolean hasTransport = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);
-        //Check intern over wifi
         return hasTransport;
     }
 

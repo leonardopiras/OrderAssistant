@@ -13,5 +13,8 @@ public interface OAModule {
     public void onServerLost();
     public void onFinishStartUpClient(boolean good, int code, OAWSClient client);
     public void onFinishStartUpServer(boolean good, int code, OAWSServer server);
+    public void onWifiLost();
     public void onStopService();
+
+
 }

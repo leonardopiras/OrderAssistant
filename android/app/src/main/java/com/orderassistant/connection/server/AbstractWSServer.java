@@ -32,27 +32,42 @@ import android.os.StrictMode;
 import com.google.gson.Gson;
 import com.orderassistant.connection.*;
 
+import java.net.HttpCookie;
+
 
 public abstract class AbstractWSServer extends WebSocketServer implements OACheckable {
 
-    protected Map<String, WebSocket> clients;
+	public static final String HEADER_USERNAME = "username";
+	public static final String HEADER_DEVICE_ID = "devId";
+
+
+    protected Map<String, ClientInfo> clients;
     protected String serviceName, ownerName; 
     protected static String TAG ="OA_WSServer";
     public static AbstractWSServer instance; 
     protected OAModule module;
 
     protected boolean isGood = false;
-    protected boolean wifiError = false;
     protected boolean errorDoubleStart = false;
     protected boolean errorBusyPort = false;
 
-    static Gson gson = new Gson();
+    private static Gson gson = new Gson();
 
 
     protected abstract void onAddNewClient(WebSocket conn, ClientHandshake handshake, String newClientName);
     protected abstract void onRemoveClient(WebSocket conn, String leavingClientName);
     protected abstract void onStopServer();
     protected abstract void onStartServer();
+
+    private static class ClientInfo {
+        String deviceId;
+        WebSocket webSocket;
+
+        ClientInfo(String deviceId, WebSocket webSocket) {
+            this.deviceId = deviceId;
+            this.webSocket = webSocket;
+        }
+    }
 
 
     protected AbstractWSServer(String serviceName, String ownerName, InetSocketAddress address) {
@@ -95,28 +110,29 @@ public abstract class AbstractWSServer extends WebSocketServer implements OAChec
         }
     }
 
-    //If there are no cookies set reject it as well.
-    if (!request.hasFieldValue("Cookie")) {
-        throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, "Not accepted! Cookie not found");
+    if (!request.hasFieldValue(HEADER_DEVICE_ID) || !request.hasFieldValue(HEADER_USERNAME)) {
+        throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, "Not accepted! Header fields not found");
     }
-    boolean errorName = false;
     String newUsername = getClientNameFromHandshake(request);
-    if (newUsername.equals(ownerName))
-        errorName = true;
-    if (clients.containsKey(newUsername)) {
-        Inet4Address oldClientAddress = getAddressFromWebSocketNoPort(clients.get(newUsername));
-        Inet4Address newClienAddress = getAddressFromWebSocketNoPort(conn);
-        if (oldClientAddress.equals(newClienAddress))
-            removeClient(clients.get(newUsername));
-        else
-            errorName = true;    
-    }   
+    boolean errorName = newUsername.equals(ownerName);
+    if (!errorName && clients.containsKey(newUsername)) 
+        errorName = handleExistingUsername(conn, newUsername, request);    
     if (errorName) {
         Log.d(TAG, "Refusing " + newUsername);
         throw new InvalidDataException(CloseFrame.REFUSE, "Username already exist!");    
     }
     return builder;    
 }
+    private boolean handleExistingUsername(WebSocket newConn, String existingUsername, ClientHandshake handshake) {
+        boolean errorName = true;
+        String oldDeviceId = clients.get(existingUsername).deviceId;
+        String newDeviceId = getDeviceIDFromHandshake(handshake);
+        if (oldDeviceId.equals(newDeviceId)) { // Same device, delete old to accept new
+            removeClient(clients.get(existingUsername).webSocket);
+            errorName = false;
+        }
+        return errorName;
+    }
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
@@ -128,12 +144,12 @@ public abstract class AbstractWSServer extends WebSocketServer implements OAChec
 
     private String addNewClient(WebSocket conn, ClientHandshake handshake) {
         String newClient = getClientNameFromHandshake(handshake);
-        clients.put(newClient, conn);
-        boolean b = addConnection(conn);
+        String deviceId = getDeviceIDFromHandshake(handshake);
+        addConnection(conn);
         conn.setAttachment(newClient);
+        clients.put(newClient, new ClientInfo(deviceId, conn));
         return newClient;
     }
-
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
@@ -203,11 +219,6 @@ public abstract class AbstractWSServer extends WebSocketServer implements OAChec
          return this.isGood;
      }
 
-     public boolean isWifiError() {
-        return this.wifiError;
-     }
-
-
     protected void send(byte[] data, WebSocket conn) {
         broadcast(data, List.of(conn));
     }  
@@ -217,8 +228,13 @@ public abstract class AbstractWSServer extends WebSocketServer implements OAChec
     }
 
     protected String getClientNameFromHandshake(ClientHandshake handshake) {
-        return handshake.getFieldValue("Cookie").replaceFirst("username=", "").toLowerCase();
+        return handshake.getFieldValue(HEADER_USERNAME);
+    }   
+    protected String getDeviceIDFromHandshake(ClientHandshake handshake) {
+        return handshake.getFieldValue(HEADER_DEVICE_ID);
     }
+
+
 
     public Inet4Address getAddressFromWebSocketNoPort(WebSocket ws) {
         return (Inet4Address) getAddressFromWebSocketWithPort(ws).getAddress();

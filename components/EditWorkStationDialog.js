@@ -51,7 +51,7 @@ export default function EditWorkStationDialog({
     const onPressPrimaryBtn = () => {
         const nameOK = name && name.length > 0;
         if (nameOK)
-            onConfirm(name, cats);
+            onConfirm(name, cats, workStationInfo.workStationName);
     }
 
 

@@ -26,6 +26,13 @@ import java.util.TimerTask;
 import java.util.HashMap;
 import java.util.Timer;
 
+import android.net.NetworkRequest;
+import android.net.ConnectivityManager;
+import android.net.ConnectivityManager.NetworkCallback;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.wifi.WifiInfo;
+
 
 public abstract class AbstractService extends Service implements OACheckable {
 
@@ -87,9 +94,29 @@ public abstract class AbstractService extends Service implements OACheckable {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         this.intent = intent;
-        if (serviceOnCreate(intent))
+        if (serviceOnCreate(intent)) {
+            listenToWifiChanges();
             Log.d(TAG, "onCreate successfull");
+        }
         return START_NOT_STICKY;
+    }
+
+    protected void listenToWifiChanges() {
+        NetworkRequest request = new NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .build();
+        ConnectivityManager connectivityManager = getSystemService(ConnectivityManager.class);
+        NetworkCallback networkCallback = new NetworkCallback() {
+
+            @Override
+            public void onLost(Network network) {
+                Log.d(TAG, "lost");
+                module.onWifiLost();
+                stopService();
+            }
+
+        };
+        connectivityManager.registerNetworkCallback(request, networkCallback); // For listen
     }
 
     protected void makeServiceForeground() {

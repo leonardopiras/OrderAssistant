@@ -35,7 +35,7 @@ import java.util.HashMap;
 import java.util.Timer;
 
 
-
+import android.provider.Settings.Secure;
 
 public class ServerService extends AbstractService {
 
@@ -73,7 +73,6 @@ public class ServerService extends AbstractService {
     public static void start(Activity activity,
             String serviceName, String ownerName, String configurationName, OAModule module) {
         Intent intent = setIntent(activity, serviceName, ownerName, configurationName, null);
-
         startService(activity, intent, module);
     }
 
@@ -170,9 +169,13 @@ public class ServerService extends AbstractService {
     }
 
     private void stopServers() {
-        infoServer.stopServer();
-        nsdServer.stopNsdServer();
-        stopWSServer();
+        if (this.infoServer!= null)
+            this.infoServer.stopServer();
+
+        if (this.nsdServer!= null)
+            this.nsdServer.stopNsdServer();
+        if (this.wsServer!= null)
+            stopWSServer();
         infoServer = null;
         nsdServer = null;
         wsServer = null;

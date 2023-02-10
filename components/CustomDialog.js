@@ -1,6 +1,6 @@
 
 <script src="http://localhost:8097"></script>
-import React, {  useState } from 'react';
+import React, {  useEffect, useState } from 'react';
 import {
   StyleSheet, View, 
    Pressable, Text, LogBox, Modal
@@ -26,28 +26,27 @@ export default function CustomDialog({
     height,
 }) {
 
-    return (
-    <Modal
-        animationType={animationType ? animationType : "fade"}
-        transparent={true}
-        visible={isVisible}
-        onRequestClose={onRequestClose}
-    >       
-       {getDialog(title,
-        description,
-        children,
-        primaryBtn,
-        secondaryBtn,
-        ternaryBtn,
-        onPressPrimaryBtn,
-        onPressSecondaryBtn,
-        onPressTernaryBtn,
-        height, null)}
+        return (
+            <Modal
+            animationType={animationType ? animationType : "fade"}
+            transparent={true}
+            visible={isVisible}
+            onRequestClose={onRequestClose}
+        >       
+           {getDialog(title,
+            description,
+            children,
+               primaryBtn,
+               secondaryBtn,
+               ternaryBtn,
+               onPressPrimaryBtn,
+               onPressSecondaryBtn,
+               onPressTernaryBtn,
+               height, null)}
 
-    </Modal>
+            </Modal>
 
-
-);
+        );
 }
 
 export const getDialog = (title,
@@ -61,8 +60,8 @@ export const getDialog = (title,
     onPressTernaryBtn,
     height, style) => {
     return (
-        <View style={myStyles.containerExternal}>
-        <View style={[myStyles.conteinerInternal, { height }, style]}>
+        <View style={[myStyles.containerExternal]}>
+        <View style={[myStyles.conteinerInternal, { height }]}>
             {title ? <Text style={[styles.text, myStyles.title]}>{title}</Text> : null}
             {description ? <Text style={[styles.text, myStyles.description]}>{description}</Text> : null}
             {children ? children : null}
@@ -137,7 +136,8 @@ const myStyles = StyleSheet.create({
         bottom: 0,
         right: 0,
         left: 0,
-        backgroundColor: "rgba(0,0,0,0.6)"
+        backgroundColor: "rgba(0,0,0,0.3)",
+        zIndex: 1
     },
     conteinerInternal: {
         paddingHorizontal: 20,
@@ -148,7 +148,7 @@ const myStyles = StyleSheet.create({
         borderRadius: 10,
         borderWidth: 1,
         borderColor: 'grey',
-        elavation: 30
+        zIndex: 100,
     },
     
 });

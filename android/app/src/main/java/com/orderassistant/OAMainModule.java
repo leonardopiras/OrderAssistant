@@ -33,7 +33,7 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
     protected Callback startUpCallback;
 
     public static enum State {
-        UNBOUND, BINDING, SERVER, CLIENT, 
+        UNBOUND, BINDING, SERVER, CLIENT,
     }
 
     public State state = State.UNBOUND;
@@ -51,7 +51,7 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
     @ReactMethod
     public void startServer(String roomName, String ownerName, String configurationName, Callback cb) {
         if (!canServerStart())
-            return;   
+            return;
         try {
             this.startUpCallback = cb;
             ServerService.start(getCurrentActivity(), roomName, ownerName, configurationName, (OAModule) this);
@@ -63,7 +63,7 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
     @ReactMethod
     public void startServerPreviousWorkService(Callback cb) {
         if (!canServerStart())
-            return; 
+            return;
         if (LoadSave.isPreviousWorkservicePresent()) {
             WorkService workService = Load.loadPreviousWorkService();
             if (workService != null) {
@@ -77,25 +77,24 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
 
     @ReactMethod
     public void taketheLead(Callback cb) {
-        if (state == State.CLIENT && canServerStart()) {
+        if (canServerStart()) {
             WorkService workService = getClient().getWorkService();
             startServerWithWorkService(cb, workService);
         }
     }
 
     boolean canServerStart() {
-         if (state == State.BINDING)
-            return false;
-        else {
+        if (state == State.UNBOUND) {
             setState(State.BINDING);
-            return true;  
-        }
+            return true;
+        } else 
+            return false;
     }
 
     private void startServerWithWorkService(Callback cb, WorkService workService) {
         this.startUpCallback = cb;
         try {
-            ServerService.startWithWorkService(getCurrentActivity(), getMyName(),  workService, (OAModule) this);
+            ServerService.startWithWorkService(getCurrentActivity(), getMyName(), workService, (OAModule) this);
         } catch (Exception e) {
             Log.e(TAG, "Error when starting with workService", e);
             cb.invoke(false, ServerService.StartUpReturnCode.GENERIC_ERROR.val);
@@ -125,10 +124,10 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
             setState(good ? newState : State.UNBOUND);
         else
             setState(State.UNBOUND);
-    } 
+    }
 
     public void setState(State newState) {
-       this.state = newState;
+        this.state = newState;
     }
 
     @ReactMethod
@@ -136,7 +135,6 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
         getClient().testThread();
     }
 
-    
     @ReactMethod
     public void isPreviousWorkServicePresent(Callback cb) {
         cb.invoke(LoadSave.isPreviousWorkservicePresent());
@@ -202,27 +200,26 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
             Save.saveItemTypeConfiguration(config);
     }
 
-
     /*****************************************
      * Order manipulation
      *****************************************/
 
-     public void handleServiceUnbound() {
+    public void handleServiceUnbound() {
         Utils.sendEvent(context, "serviceUnbound", null);
-     }
+    }
 
     @ReactMethod
     public void addOrder(ReadableArray itemList, String comment, String table,
             Boolean isPaid, Boolean isProcessed, Integer seats, Double coverCharge, Callback cb) {
         Order ord = new Order(itemList, comment, table, getMyName(), isPaid, isProcessed, seats, coverCharge);
-        
+
         switch (state) {
             case SERVER:
-            boolean res = getServer().addOrder(ord);
-            cb.invoke(res);
+                boolean res = getServer().addOrder(ord);
+                cb.invoke(res);
                 break;
             case CLIENT:
-            getClient().addOrderRequest(ord, cb);
+                getClient().addOrderRequest(ord, cb);
 
                 break;
             default:
@@ -249,18 +246,18 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
             Double coverCharge, Integer orderId, String birthDate, String processDate, Callback cb) {
         Order ord = new Order(itemList, comment, table, getMyName(), isPaid,
                 isProcessed, seats, coverCharge, birthDate, processDate, orderId);
-                switch (state) {
-                    case SERVER:
-                    boolean res = getServer().updateOrder(ord);
-                    cb.invoke(res);
-                        break;
-                    case CLIENT:
-                    getClient().updateOrderRequest(ord, cb);
+        switch (state) {
+            case SERVER:
+                boolean res = getServer().updateOrder(ord);
+                cb.invoke(res);
+                break;
+            case CLIENT:
+                getClient().updateOrderRequest(ord, cb);
 
-                        break;
-                    default:
-                        handleServiceUnbound();
-                }
+                break;
+            default:
+                handleServiceUnbound();
+        }
     }
 
     @ReactMethod
@@ -268,8 +265,8 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
         ArrayList<Integer> orderIds = WritableReadableUtils.intListFromReadbleArray(ordersIdR);
         switch (state) {
             case SERVER:
-            boolean res = getServer().joinOrders(orderIds);
-            cb.invoke(res);
+                boolean res = getServer().joinOrders(orderIds);
+                cb.invoke(res);
                 break;
             case CLIENT:
                 getClient().joinOrdersRequest(orderIds, cb);
@@ -284,11 +281,11 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
     public void deleteOrder(Integer orderId, Callback cb) {
         switch (state) {
             case SERVER:
-            boolean res = getServer().deleteOrder(orderId);
-            cb.invoke(res);
+                boolean res = getServer().deleteOrder(orderId);
+                cb.invoke(res);
                 break;
             case CLIENT:
-            getClient().deleteOrderRequest(orderId, cb);
+                getClient().deleteOrderRequest(orderId, cb);
                 break;
             default:
                 handleServiceUnbound();
@@ -320,13 +317,13 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
         switch (state) {
             case SERVER:
             case CLIENT:
-            WorkService workService = getOAConn().getWorkService();
-            cb.invoke(workService.toWritableMap());
+                WorkService workService = getOAConn().getWorkService();
+                cb.invoke(workService.toWritableMap());
                 break;
             default:
                 handleServiceUnbound();
         }
-       
+
     }
 
     @ReactMethod
@@ -362,13 +359,13 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
         switch (state) {
             case SERVER:
             case CLIENT:
-            WritableMap map = getOAConn().getItemTypeConfiguration().toWritableMap();
-            cb.invoke(map);
+                WritableMap map = getOAConn().getItemTypeConfiguration().toWritableMap();
+                cb.invoke(map);
                 break;
             default:
                 handleServiceUnbound();
         }
-   
+
     }
 
     /*****************************************
@@ -380,14 +377,14 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
         switch (state) {
             case SERVER:
             case CLIENT:
-            List<Order> orders = getWorkService().getWorkStationOrders(workStation, excludeCompleted);
-            WritableArray arr = WritableReadableUtils.writableListToWritableArray(orders);
-            cb.invoke(arr);
+                List<Order> orders = getWorkService().getWorkStationOrders(workStation, excludeCompleted);
+                WritableArray arr = WritableReadableUtils.writableListToWritableArray(orders);
+                cb.invoke(arr);
                 break;
             default:
                 handleServiceUnbound();
         }
-      
+
     }
 
     @ReactMethod
@@ -491,9 +488,18 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
 
     @Override
     public void onServerLost() {
-        if (state == State.CLIENT)
+        if (state == State.CLIENT) {
+            setState(State.UNBOUND);
             Utils.sendEvent(context, "serverLost", null);
+        }
     }
+
+    @Override
+    public void onWifiLost() {
+        setState(State.UNBOUND);
+        handleServiceUnbound();
+    }
+
 
     protected void sendUpdateEvent(String type) {
         WritableMap map = new WritableNativeMap();
@@ -505,16 +511,16 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
      * Various
      *****************************************/
 
-     @ReactMethod
-     public void isWifiGood(Callback cb) {
-        boolean good = Utils.isWifiGood(getReactApplicationContext());  
+    @ReactMethod
+    public void isWifiGood(Callback cb) {
+        boolean good = Utils.isWifiGood(getReactApplicationContext());
         cb.invoke(good);
-     }
-  
-     @ReactMethod 
-     public void isWorkServiceRunning(Callback cb) {
+    }
+
+    @ReactMethod
+    public void isWorkServiceRunning(Callback cb) {
         cb.invoke(state != State.UNBOUND);
-     }
+    }
 
     @ReactMethod
     public void checkConnection(Callback cb) {
@@ -541,7 +547,7 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
     }
 
     protected String getMyName() {
-        return UsernameModule.getUsername(getReactApplicationContext()); //getOAConn().getUsername();
+        return UsernameModule.getUsername(getReactApplicationContext()); // getOAConn().getUsername();
     }
 
     protected WorkService getWorkService() {

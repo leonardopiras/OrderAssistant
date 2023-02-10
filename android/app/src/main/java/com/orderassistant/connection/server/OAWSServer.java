@@ -83,7 +83,6 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
      * OAConnection implementation
      *****************************************/
 
-    @Override 
     public String getUsername() {
         return getOwnerName();
     }

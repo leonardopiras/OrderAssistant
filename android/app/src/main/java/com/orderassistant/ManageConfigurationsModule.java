@@ -40,17 +40,20 @@ public class ManageConfigurationsModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void getItemTypeConfigurations(Callback cb) {
         String[] confArr = LoadSave.getItemTypeConfigurations();
-        
         cb.invoke(WritableReadableUtils.writablefromStringArr(confArr));
     }
 
     @ReactMethod
+    public void configurationExist(String configName, Callback cb) {
+        cb.invoke(LoadSave.configurationExist(configName));
+    }
+
+    @ReactMethod
     public void loadItemCats(Callback cb) {
-        String[] itemCats =(String[]) Load.loadItemCats();
-        if (itemCats != null)
-            cb.invoke(WritableReadableUtils.writablefromStringArr(itemCats));
-        else 
-            cb.invoke("error");
+        String[] itemCats = (String[]) Load.loadItemCats();
+        if (itemCats == null)
+            itemCats = new String[0];
+        cb.invoke(WritableReadableUtils.writablefromStringArr(itemCats));
     }
 
 
