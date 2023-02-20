@@ -28,12 +28,12 @@ import com.orderassistant.connection.serverDetails.InfoServer;
 import com.orderassistant.connection.*;
 import com.orderassistant.utils.Utils;
 import com.orderassistant.storagemanager.Save;
+import static com.orderassistant.connection.server.ServerService.StartUpReturnCode.*;
 
 
 import java.util.TimerTask;
 import java.util.HashMap;
 import java.util.Timer;
-
 
 import android.provider.Settings.Secure;
 
@@ -58,11 +58,11 @@ public class ServerService extends AbstractService {
         ALL_GOOD(0), 
         GENERIC_ERROR(1),
         ERROR_DOUBLE_START(2),
-        ERROR_BUSY_PORT(3),
-        ERROR_NSD(4),
-        ERROR_INFO_SERVER(5),
-        ERROR_WIFI(6),
-        ERROR_LOAD_PREVIOUS_WORKSERVICE(7);
+        ERROR_NSD(3),
+        ERROR_INFO_SERVER(4),
+        ERROR_WIFI(5),
+        ERROR_LOAD_PREVIOUS_WORKSERVICE(6),
+        ERROR_BUSY_PORT(7);
 
         public     int val;
         StartUpReturnCode(int val) {
@@ -117,21 +117,24 @@ public class ServerService extends AbstractService {
     @Override
     protected boolean serviceOnCreate(Intent intent) {
         boolean result = false;
-        StartUpReturnCode code = StartUpReturnCode.GENERIC_ERROR;
+        StartUpReturnCode code = GENERIC_ERROR;
         if (setStartUpParamsFromIntent(intent)) {
             if (Utils.isWifiGood((Context) this) && setSocketAddress()) {
                 if (startWSServer()) { 
                     if (startNsdInfoServers()) {
                         result = true; 
-                        code = StartUpReturnCode.ALL_GOOD;
+                        code = ALL_GOOD;
                         makeServiceForeground();
                     } else {
                         result = false;
-                        code = isCheckableGood(nsdServer) ? StartUpReturnCode.ERROR_INFO_SERVER : StartUpReturnCode.ERROR_NSD;
+                        code = isCheckableGood(nsdServer) ? ERROR_INFO_SERVER : ERROR_NSD;
                     } 
+                } else {
+                    if (wsServer != null)
+                        code = wsServer.getStartUpReturnCode(); 
                 }
-            } else { // Wifi isn't good
-                code = StartUpReturnCode.ERROR_WIFI;
+            } else {
+                code = ERROR_WIFI;
             } 
         }
         module.onFinishStartUpServer(result, code.val, wsServer);

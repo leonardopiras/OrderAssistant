@@ -29,18 +29,19 @@ const clientStartUpCode = {
   NAME_ALREADY_IN_USE: 2,
   PARSER_ERROR: 3,
   TIMER_EXCEDEED: 4,
-  ECONNREFUSED: 5
+  ECONNREFUSED: 5,
+  ERROR_ON_CLOSE: 6,
 }
 
 const serverStartUpCode = {
   ALL_GOOD: 0,
   GENERIC_ERROR: 1,
   ERROR_DOUBLE_START: 2,
-  ERROR_BUSY_PORT: 3,
-  ERROR_NSD: 4,
-  ERROR_INFO_SERVER: 5,
-  ERROR_WIFI: 6,
-  ERROR_LOAD_PREVIOUS_WORKSERVICE: 7
+  ERROR_NSD: 3,
+  ERROR_INFO_SERVER: 4,
+  ERROR_WIFI: 5,
+  ERROR_LOAD_PREVIOUS_WORKSERVICE: 6,
+  ERROR_BUSY_PORT: 7
 }
 
 export default function WaitRoom({ navigation, route }) {
@@ -84,6 +85,7 @@ export default function WaitRoom({ navigation, route }) {
     doUWantStoreConfiguration: "Vuoi salvare la configurazione?",
     loadService: "Carica servizio in sospeso",
     serverErrorLoadPrevWS: "Il servizio non è stato salvato correttamente",
+    errorClientOnClose: "Il server non ha accettato la richiesta di connessione"
   });
 
   useEffect(() => {
@@ -218,6 +220,8 @@ export default function WaitRoom({ navigation, route }) {
       return sentences.clientErrorTimer;
     else if (code === clientStartUpCode.ECONNREFUSED)
       return sentences.clientErrorConnRefused;
+    else if (code === clientStartUpCode.ERROR_ON_CLOSE)
+      return sentences.errorClientOnClose;
   }
 
   const getServerErrorCauseStartUp = (code) => {

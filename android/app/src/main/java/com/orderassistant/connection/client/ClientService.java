@@ -30,11 +30,14 @@ import com.orderassistant.models.*;
 
 
 import java.util.TimerTask;
-
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
 import java.util.Timer;
 
 import android.provider.Settings.Secure;
+
+import static com.orderassistant.connection.client.ClientService.StartUpReturnCode.*;
+
 
 public class ClientService extends AbstractService {
 
@@ -54,7 +57,7 @@ public class ClientService extends AbstractService {
 
     protected OAWSClient wsClient;
 
-    protected boolean startUpFinished;
+    protected AtomicBoolean startUpFinished;
 
     public static enum StartUpReturnCode {
         ALL_GOOD(0), 
@@ -62,7 +65,8 @@ public class ClientService extends AbstractService {
         NAME_ALREADY_IN_USE(2),
         PARSER_ERROR(3),
         TIMER_EXCEDEED(4),
-        ECONNREFUSED(5);
+        ECONNREFUSED(5),
+        ERROR_ON_CLOSE(6);
 
         int val;
         StartUpReturnCode(int val) {
@@ -110,7 +114,7 @@ public class ClientService extends AbstractService {
     @Override
     protected boolean serviceOnCreate(Intent intent) {
         if (setStartUpParamsFromIntent(intent)) {
-            this.startUpFinished = false; 
+            this.startUpFinished = new AtomicBoolean(false); 
             String deviceId = getDeviceId();
             this.wsClient = new OAWSClient(address, port, username, deviceId, this, module);
         }
@@ -118,21 +122,18 @@ public class ClientService extends AbstractService {
     }
 
     public synchronized boolean onFinishStartUp(boolean good, StartUpReturnCode code) {
-        if (!startUpFinished) {
-            startUpFinished = true; 
-            if (good) {
-                module.onFinishStartUpClient(good, code.val, wsClient);
+        boolean isFirstCall = startUpFinished.compareAndSet(false, true);
+        if (isFirstCall) {
+            if (code == ERROR_ON_CLOSE && checkNameAlreadyInUse())
+                code = NAME_ALREADY_IN_USE;
+
+            module.onFinishStartUpClient(good, code.val, wsClient);
+            if (good)
                 makeServiceForeground();
-            } else {
-                if (code == StartUpReturnCode.GENERIC_ERROR && checkNameAlreadyInUse()) 
-                        code = StartUpReturnCode.NAME_ALREADY_IN_USE;
-    
-                module.onFinishStartUpClient(good, code.val, wsClient);
+            else
                 stopService();
-            }
-            return true; 
-        } else 
-            return false;
+        }
+        return isFirstCall;
     }
 
     protected boolean checkNameAlreadyInUse() {

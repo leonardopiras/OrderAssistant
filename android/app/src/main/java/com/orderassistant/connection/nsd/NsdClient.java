@@ -25,9 +25,10 @@ public class NsdClient {
 
     public static interface NsdClientListener {
         public abstract void onServerFound(NsdData nsdData);
+        public abstract void onDiscoveryStopped();
     }
 
-    public static void findServers(NsdClientListener listener, long millis, Context context, Callback cb) {
+    public static void findServers(long millis, Context context, NsdClientListener listener) {
         nsdClientListener = listener;
         NsdClient.context  = context;
         NsdClient.myIp = Utils.getMyLocalIpv4();
@@ -38,9 +39,9 @@ public class NsdClient {
             public void run(){
                 try {
                     Thread.sleep(millis);
-                } catch (Exception e) {}
+                } catch (Exception ignored) {}
                 stopServiceDiscovery();
-                cb.invoke();
+                listener.onDiscoveryStopped();
             }
         }.start();
     }

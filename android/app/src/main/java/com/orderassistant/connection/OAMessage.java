@@ -16,7 +16,7 @@ public class OAMessage implements Serializable {
     public static final String tag = "OAMessage";
 
     public MsgType type; 
-    public byte[] payload; 
+    public Object payload; 
 
     public static enum MsgType {
         STARTUP_ENV_REQUEST,
@@ -50,15 +50,23 @@ public class OAMessage implements Serializable {
 
     public OAMessage(MsgType type, Object object) {
         this.type = type;
-        this.payload = objToByteArray(object);
+        this.payload =  object;
     }
 
     public <T> T getPayload() {
-        return (T) readByteArray(payload);
+        return (T) payload;
     }
 
     protected byte[] toByteArray() {
-        return objToByteArray(this);
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                ObjectOutputStream oos = new ObjectOutputStream(bos)) {
+            oos.writeObject(this);
+            oos.flush();
+            return bos.toByteArray();
+        } catch (Exception e) {
+            Log.e(tag, "Unable to convert to byte array");
+            return null;
+        }
     }
 
     public static byte[] newMsg(MsgType msgType) {
@@ -76,17 +84,6 @@ public class OAMessage implements Serializable {
             return (OAMessage) readByteArray(buffer.array());
         else
             Log.e(tag, "Buffer hasn't got an array");
-        return null;
-    }
-
-    protected static byte[] objToByteArray(Object obj) {
-        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                ObjectOutputStream oos = new ObjectOutputStream(bos)) {
-            oos.writeObject(obj);
-            oos.flush();
-            return bos.toByteArray();
-        } catch (Exception e) {}
-        Log.e(tag, "Unable to convert " + obj);
         return null;
     }
 

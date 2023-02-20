@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.java_websocket.server.WebSocketServer;
 
-public class OAMainModule extends ReactContextBaseJavaModule implements NsdClientListener, OAModule {
+public class OAMainModule extends ReactContextBaseJavaModule implements OAModule {
 
     public static String TAG = "OA_MainModule";// "WSServerModule";
     protected ReactApplicationContext context;
@@ -145,14 +145,21 @@ public class OAMainModule extends ReactContextBaseJavaModule implements NsdClien
      *****************************************/
 
     @ReactMethod
-    public void findServers(int millis, Callback cb) {
-        NsdClient.findServers((NsdClientListener) OAMainModule.this, millis, context, cb);
-    }
+    public void findServers(int millis, Callback onDiscoveryStoppedCb) {
+        NsdClient.findServers(millis, context, new NsdClientListener() {
 
-    @Override
-    public void onServerFound(NsdData nsdData) {
-        Utils.sendEvent(getReactApplicationContext(), "NewServerFound", nsdData.toWritableMap());
-        getServerDetails(nsdData.address, nsdData.infoPort);
+            @Override
+            public void onServerFound(NsdData nsdData) {
+                Utils.sendEvent(context, "NewServerFound", nsdData.toWritableMap());
+                getServerDetails(nsdData.address, nsdData.infoPort);
+            }
+
+            @Override
+            public void onDiscoveryStopped() {
+                onDiscoveryStoppedCb.invoke();
+            }
+        });
+
     }
 
     @ReactMethod

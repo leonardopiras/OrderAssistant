@@ -50,9 +50,6 @@ public abstract class AbstractService extends Service implements OACheckable {
     private static OAModule moduleParam;
     protected OAModule module;
 
-
-    // protected static String serviceName, ownername, configName;
-
     protected static boolean startService(Activity activity, Intent intent,
      OAModule moduleParam) {
         if (instance != null) // Stop of previous connection if exists

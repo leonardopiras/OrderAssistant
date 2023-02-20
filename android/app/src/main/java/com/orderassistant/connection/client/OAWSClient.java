@@ -53,7 +53,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
     protected static final String TAG = "OA_WSClient";
 	protected static final int EXIT_CODE_SERVER_LOST = 1006; 
 	protected static final long START_UP_TIMER_DELAY_IN_MILLIS = 6000L;
-	protected static final int CONNECTON_LOST_TIMEOUT_IN_SEC = 5;
+	protected static final int CONNECTON_LOST_TIMEOUT_IN_SEC = 30;
 
 	public static OAWSClient instance;
 	protected String username;
@@ -84,13 +84,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 
 
 		connect();
-		new Thread(() -> {
-			try {Thread.sleep(START_UP_TIMER_DELAY_IN_MILLIS); } catch (Exception e) {}
- 			if (service.onFinishStartUp(false, StartUpReturnCode.TIMER_EXCEDEED)) {
-				this.isGood = false;
-				Log.e(TAG, "StartUpTimer excedeed");
-			}
-		}).start();
+		startTimerStartUp(START_UP_TIMER_DELAY_IN_MILLIS);
 	}
 
 	private static URI createUri(String address, int port) {
@@ -104,6 +98,16 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 		return null;
 	}
 
+	private void startTimerStartUp(long delay) {
+		new Thread(() -> {
+			try {Thread.sleep(delay); } catch (Exception e) {}
+ 			if (service.onFinishStartUp(false, StartUpReturnCode.TIMER_EXCEDEED)) {
+				this.isGood = false;
+				Log.e(TAG, "StartUpTimer excedeed");
+			}
+		}).start();
+	}
+
 	private static Map<String, String> createHeader(String username, String deviceId) {
 		Map<String, String> httpHeaders = new HashMap<String, String>();
 		httpHeaders.put(AbstractWSServer.HEADER_USERNAME, username);
@@ -114,7 +118,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 	@Override
 	public void onOpen(ServerHandshake handshakedata) {
 		this.isGood = true;
-		Log.d(TAG,"new connection opened");
+		Log.d(TAG,"Connection opened");
 		if (instance != null)
 			instance.close();
 		instance = this;
@@ -128,25 +132,24 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 		if (code == EXIT_CODE_SERVER_LOST) 
 			invokeModuleOnServerLost();
 				
-	service.onFinishStartUp(false, StartUpReturnCode.GENERIC_ERROR);
+		service.onFinishStartUp(false, StartUpReturnCode.ERROR_ON_CLOSE);
 	}
 
 	@Override
 	public void onError(Exception ex) {
 		this.isGood = false;
 		Log.e(TAG,"an error occurred: ", ex);
+		StartUpReturnCode code = StartUpReturnCode.GENERIC_ERROR;
 
-		if (ex.getMessage().contains("ECONNREFUSED")) {
-			service.onFinishStartUp(false, StartUpReturnCode.ECONNREFUSED);
-			return;
-		}
+		if (ex.getMessage().contains(" ")) 
+			code = StartUpReturnCode.ECONNREFUSED;
 
 		service.onFinishStartUp(false, StartUpReturnCode.GENERIC_ERROR);
 	}
 
 	@Override
 	public void onMessage(String message) {
-		Log.d(TAG,"received message: " + message);
+		Log.e(TAG,"received string message: " + message);
 	}
 
 	public void stopClient() {

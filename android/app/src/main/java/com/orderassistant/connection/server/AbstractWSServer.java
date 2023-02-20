@@ -8,9 +8,11 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.*;
 
 import com.orderassistant.utils.Utils;
+import com.orderassistant.connection.server.ServerService.StartUpReturnCode;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
@@ -48,10 +50,14 @@ public abstract class AbstractWSServer extends WebSocketServer implements OAChec
     protected OAModule module;
 
     protected boolean isGood = false;
-    protected boolean errorDoubleStart = false;
-    protected boolean errorBusyPort = false;
+
+    private AtomicBoolean isStarting;
 
     private static Gson gson = new Gson();
+
+    protected StartUpReturnCode startUpReturnCode = StartUpReturnCode.GENERIC_ERROR;
+
+
 
 
     protected abstract void onAddNewClient(WebSocket conn, ClientHandshake handshake, String newClientName);
@@ -77,23 +83,53 @@ public abstract class AbstractWSServer extends WebSocketServer implements OAChec
         this.clients = new ConcurrentHashMap<>();
         setTcpNoDelay(true);
         setReuseAddr(true); // Permette di riutilizzare immediatamente l'indirizzo se la connessione cade
-        this.isGood = tryStart();
     }
 
-    private boolean tryStart() {
+    protected boolean doStartWSServer() {
+        isStarting = new AtomicBoolean(true);
         try {
             start();
-            return true;
+            while(isStarting.get()) {
+                Thread.yield();
+            }
+            Log.d(TAG, "Finished startup");
+            return isGood();
         } catch (java.lang.IllegalStateException ex) {
-            this.errorDoubleStart = true;
-            // Every start needs a new thread
+            startUpReturnCode = StartUpReturnCode.ERROR_DOUBLE_START;
+            isGood = false;
             Log.e(TAG, "Errors on WSServer start, maybe server already started: ", ex);
-            try {
-                stop();
-            } catch (java.lang.InterruptedException e1) {}
         }
         return false;
     }
+
+    @Override
+    public void onError(WebSocket conn, Exception ex) {
+        Log.e(TAG, "Errors occured, ", ex);
+        if (conn == null) { // Errors on start
+            if (ex.getMessage().equals("Address already in use")) {
+                startUpReturnCode = StartUpReturnCode.ERROR_BUSY_PORT;
+                Log.e(TAG, "Error: Trying to start WSServer on a busy port ", ex);
+            }
+        }
+        isGood = false;
+        isStarting.set(false);
+    }
+
+    @Override
+    public void onStart() {
+        setConnectionLostTimeout(0);
+        instance = this;
+        onStartServer();
+        isGood = true;
+        Log.d(TAG, "Server started! Port: " + getPort() + "\nAddress " + getAddress());
+        isStarting.set(false);
+    }
+
+    public StartUpReturnCode getStartUpReturnCode() {
+        return startUpReturnCode;
+    }
+
+
 
     @Override
   public ServerHandshakeBuilder onWebsocketHandshakeReceivedAsServer(WebSocket conn, Draft draft,
@@ -111,7 +147,8 @@ public abstract class AbstractWSServer extends WebSocketServer implements OAChec
     }
 
     if (!request.hasFieldValue(HEADER_DEVICE_ID) || !request.hasFieldValue(HEADER_USERNAME)) {
-        throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, "Not accepted! Header fields not found");
+        throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, 
+        "Not accepted! Header fields not found");
     }
     String newUsername = getClientNameFromHandshake(request);
     boolean errorName = newUsername.equals(ownerName);
@@ -177,27 +214,6 @@ public abstract class AbstractWSServer extends WebSocketServer implements OAChec
 
         // }
         Log.d(TAG, message);
-    }
-
-    @Override
-    public void onError(WebSocket conn, Exception ex) {
-        Log.e(TAG, "Errors occured", ex);
-        if (conn != null) {
-            // some errors like port binding failed may not be assignable to a specific
-            // websocket
-        } else if (ex.getMessage().equals("Address already in use")) {
-            errorBusyPort = true;
-            Log.e(TAG, "Error: Trying to start WSServer on a busy port");  
-        } 
-        isGood = false;  
-    }
-
-    @Override
-    public void onStart() {
-        Log.d(TAG, "Server started! Port: " + getPort() + "\nAddress " + getAddress());
-        setConnectionLostTimeout(0);
-        instance = this;
-        onStartServer();
     }
 
     public void stopServer() {

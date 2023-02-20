@@ -48,11 +48,13 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
         super(serviceName, ownerName, address);
         this.configurationName = configurationName;
         this.module = module;
+        doStartWSServer();
     }
 
     public OAWSServer(String serviceName, String ownerName, WorkService overrideWorkService, OAModule module, InetSocketAddress address) {
-        this(serviceName, ownerName, overrideWorkService.getConfiguration().name, module, address);
+        super(overrideWorkService.getConfiguration().name, ownerName, address);
         this.workService = overrideWorkService;
+        doStartWSServer();
     }
 
     @Override
@@ -348,7 +350,6 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
             Log.e(TAG, "Module not bound");
     }
 
-    // Da cancellare non è utilizzato
     protected void invokeModuleWorkServiceUpdate() {
         if (module != null)
             module.onWorkServiceUpdate(workService);
@@ -377,7 +378,7 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
 
    
     protected void send(Object object, MsgType msgType, WebSocket conn) {
-        send(OAMessage.newMsg(object, msgType), conn);
+        conn.send(OAMessage.newMsg(object, msgType));
     }
 
     protected void broadcast(Object object, MsgType msgType) {
