@@ -73,8 +73,8 @@ public class OAMessage implements Serializable {
         return newMsg(null, msgType);
     }
 
-    public static byte[] newMsg(Object obj, MsgType msgType) {
-        OAMessage msg = new OAMessage(msgType, obj);
+    public static byte[] newMsg(Object payload, MsgType msgType) {
+        OAMessage msg = new OAMessage(msgType, payload);
         return msg.toByteArray();
 
     }

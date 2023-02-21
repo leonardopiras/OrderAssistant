@@ -127,9 +127,10 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
     }
 
     public boolean processOrder(int orderId) {
-        boolean good = getWorkService().processOrder(orderId);
+        Order order = getWorkService().processOrder(orderId);
+        Boolean good = order != null;
         if (good) 
-            broadcastOrderLists(false);
+            broadcastOrderUpdate(order, false);
         return good;
     }
 
@@ -297,10 +298,11 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
 
     protected void handleProcessOrderRequest(OAMessage mess, WebSocket conn) {
         Integer orderId = mess.<Integer>getPayload();
-        Boolean good = getWorkService().processOrder(orderId);
+        Order order = getWorkService().processOrder(orderId);
+        Boolean good = order != null;
         send(good, MsgType.PROCESS_ORDER_RESPONSE, conn);
         if (good)
-            broadcastOrderLists(true);
+            broadcastOrderUpdate(order, true);
     }
 
     protected void handleCompleteItemRequest(OAMessage mess, WebSocket conn) {

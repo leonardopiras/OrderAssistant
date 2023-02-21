@@ -119,7 +119,7 @@ export default function EditOrder({ route }) {
     if (!createMode)
       fetchOrder(route.params.orderId)
         .then(order => fillForm(order, false))
-        .catch(() => goBack());
+        .catch(() => Header.goBack());
 
   }
 
@@ -300,7 +300,7 @@ export default function EditOrder({ route }) {
           type: 'success', 
           text1: sentences.orderSuccessFullyUpdated
         });
-        goBack();
+        Header.goBack();
       } else {
         Toast.show({
           type: 'error', 
@@ -330,7 +330,7 @@ export default function EditOrder({ route }) {
 
   const deleteOrder = () => {
     if (createMode)
-      goBack();
+      Header.goBack();
     else {
       OAMainModule.deleteOrder(route.params.orderId, good => {
         if (good) {
@@ -338,7 +338,7 @@ export default function EditOrder({ route }) {
             type: 'success',
             text1: sentences.orderSuccessFullyDeleted
           });
-          goBack();
+          Header.goBack();
         } else {
           Toast.show({
             type: 'error',

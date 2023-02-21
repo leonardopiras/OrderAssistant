@@ -374,16 +374,17 @@ public class WorkService implements Serializable, Writable {
         return order;
     }
 
-    public synchronized boolean processOrder(int orderId) {
+    public synchronized Order processOrder(int orderId) {
+        boolean good = false;
         Order order = getUnprocessedOrder(orderId);
         if (order != null) {
             unprocessed.remove(order);
             if (order.isPaid())
-                return addOrderToProcessed(order);
+                good = addOrderToProcessed(order);
             else
-                return addOrderToUnpaidProcessed(order);
-        } else
-            return false;
+                good = addOrderToUnpaidProcessed(order);
+        } 
+        return good ? order : null;
     }
 
 

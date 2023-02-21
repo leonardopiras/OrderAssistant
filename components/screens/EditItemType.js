@@ -129,7 +129,7 @@ export default function EditItemType({
         DeviceEventEmitter.emit("seItemTypeList", (prev => {
             return prev.map((el,indx) => {return (el.id == newItemType.id) ? newItemType : el});
         }));
-        navigation.goBack();
+        Header.goBack();
     }
 
     const shouldIShowError = (fieldName) => {
@@ -225,7 +225,7 @@ export default function EditItemType({
                 setSelectedIndx={setSelectedViewPagerIndx}
                 showBtns={true}
                 trySaveAndExit={trySaveAndExit}
-                goBack={() => navigation.goBack()}
+                goBack={Header.goBack}
             />
         </View>
     );
