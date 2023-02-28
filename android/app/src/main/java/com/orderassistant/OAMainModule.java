@@ -21,7 +21,6 @@ import android.util.Log;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.java_websocket.server.WebSocketServer;
 
 public class OAMainModule extends ReactContextBaseJavaModule implements OAModule {
 
@@ -178,7 +177,8 @@ public class OAMainModule extends ReactContextBaseJavaModule implements OAModule
             this.startUpCallback = cb;
             ClientService.start(getCurrentActivity(), address, port, roomName, username, infoPort, (OAModule) this);
         } catch (Exception e) {
-            cb.invoke(e.getMessage());
+            Log.e(TAG, "Unable to start ClientService ", e);
+            cb.invoke(false, ClientService.StartUpReturnCode.GENERIC_ERROR);
         }
     }
 
@@ -486,11 +486,6 @@ public class OAMainModule extends ReactContextBaseJavaModule implements OAModule
     @Override
     public void onOrderListsUpdate(OrderLists lists) {
         sendUpdateEvent("lists");
-    }
-
-    @Override
-    public void onConfigurationUpdate(ItemTypeConfiguration configuration) {
-        sendUpdateEvent("config");
     }
 
     @Override

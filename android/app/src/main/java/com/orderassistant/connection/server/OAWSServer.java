@@ -106,7 +106,7 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
 
     public boolean addOrder(Order order) {
         if (getWorkService().addOrder(order)) {
-            broadcastOrderLists(false);
+            broadcastNewOrder(order, null);
             return true;
         } else
             return false;
@@ -115,14 +115,14 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
     public boolean setItemCompleted(int orderId, int itemId, boolean completed) {
         Order ord = getWorkService().setItemCompleted(orderId, itemId, completed);
         if (ord != null) 
-            broadcastOrderUpdate(ord, true);
+            broadcastOrderUpdate(ord, null);
         return ord != null;
     }
 
     public boolean updateOrder(Order order) {
         boolean good = getWorkService().updateOrder(order);
         if (good)
-            broadcastOrderUpdate(order, false);
+            broadcastOrderUpdate(order, null);
         return good;
     }
 
@@ -130,14 +130,14 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
         Order order = getWorkService().processOrder(orderId);
         Boolean good = order != null;
         if (good) 
-            broadcastOrderUpdate(order, false);
+            broadcastOrderUpdate(order, null);
         return good;
     }
 
     public boolean deleteOrder(Integer orderId) {
         boolean good = getWorkService().deleteOrder(orderId);
         if (good)
-            broadcastOrderLists(false);
+            broadcastOrderLists(null);
         return good;
     }
 
@@ -145,21 +145,21 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
         Order order = getWorkService().payOrder(orderId);
         Boolean good = order != null;
         if (good)
-            broadcastOrderUpdate(order, false);
+            broadcastOrderUpdate(order, null);
         return good;
     }
 
     public boolean joinOrders(ArrayList<Integer> orderIds) {
         Boolean good = getWorkService().joinOrders(orderIds);
         if (good)
-            broadcastOrderLists(false);
+            broadcastOrderLists(null);
         return good;
     }
 
     public boolean updateConfiguration(ItemTypeConfiguration config) {
         Boolean good = getWorkService().updateConfiguration(config);
         if (good)
-            broadcastWorkService(false);
+            broadcastWorkService(null);
         return good;
     }
 
@@ -168,22 +168,36 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
      * Broadcast
      *****************************************/
 
-    protected void broadcastWorkService(boolean selfInvoke) {
-        broadcast(getWorkService(), MsgType.WORKSERVICE_UPDATE);
-        if (selfInvoke)
+    protected void broadcastWorkService(WebSocket requestorWebSocket) {
+        String requestor = getClientName(requestorWebSocket);
+        broadcast(getWorkService(), MsgType.WORKSERVICE_UPDATE, requestor);
+        if (requestor != null)
             invokeModuleWorkServiceUpdate();
     }
 
-    protected void broadcastOrderLists(boolean selfInvoke) {
-        broadcast(getWorkService().getOrderLists(), MsgType.ORDER_LISTS_UPDATE);
-        if (selfInvoke)
+    protected void broadcastOrderLists(WebSocket requestorWebSocket) {
+        String requestor = getClientName(requestorWebSocket);
+        broadcast(getWorkService().getOrderLists(), MsgType.ORDER_LISTS_UPDATE, requestor);
+        if (requestor != null)
             invokeModuleOrderListsUpdate();
     }
 
-    protected void broadcastOrderUpdate(Order order, boolean selfInvoke) {
-        broadcast(order, MsgType.ORDER_UPDATE);
-        if (selfInvoke)
+    protected void broadcastOrderUpdate(Order order, WebSocket requestorWebSocket) {
+        String requestor = getClientName(requestorWebSocket);
+        broadcast(order, MsgType.ORDER_UPDATE, requestor);
+        if (requestor != null)
             invokeModuleOrderUpdate(order);
+    }  
+
+    protected void broadcastNewOrder(Order order, WebSocket requestorWebSocket) {
+        String requestor = getClientName(requestorWebSocket);
+        broadcast(order, MsgType.NEW_ORDER, requestor);
+        if (requestor != null)
+            invokeModuleOrderListsUpdate();
+    }
+
+    protected String getClientName(WebSocket conn) {
+        return (conn != null) ? conn.<String>getAttachment() : null;
     }
 
 
@@ -265,9 +279,9 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
     protected void handleJoinOrdersRequest(OAMessage mess, WebSocket conn) {
         ArrayList<Integer> orderIds = mess.<ArrayList<Integer>>getPayload();
         Boolean good = getWorkService().joinOrders(orderIds);
-        send(good, MsgType.JOIN_ORDERS_RESPONSE, conn);
         if (good)
-            broadcastOrderLists(true);  
+            broadcastOrderLists(conn);  
+        send(good, MsgType.JOIN_ORDERS_RESPONSE, conn);
     }
 
 
@@ -275,9 +289,10 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
         Integer orderId = mess.<Integer>getPayload();
         Order order = getWorkService().payOrder(orderId);
         Boolean good = order != null;
-        send(good, MsgType.PAY_ORDER_RESPONSE, conn);
         if (good) 
-            broadcastOrderUpdate(order, true);
+            broadcastOrderUpdate(order, conn);
+        send(good, MsgType.PAY_ORDER_RESPONSE, conn);
+
     }
 
     protected void handleDeleteOrderRequest(OAMessage mess, WebSocket conn) {
@@ -285,7 +300,7 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
         Boolean good = getWorkService().deleteOrder(orderId);
         send(good, MsgType.DELETE_ORDER_RESPONSE, conn);
         if (good)
-            broadcastOrderLists(true);
+            broadcastOrderLists(conn);
     }
 
     protected void handleOrderUpdateRequest(OAMessage mess, WebSocket conn) {
@@ -293,7 +308,7 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
         Boolean result = getWorkService().updateOrder(order);
         send(result, MsgType.ORDER_UPDATE_RESPONSE, conn);
         if (result)
-            broadcastOrderUpdate(order, true);
+            broadcastOrderUpdate(order, conn);
     }
 
     protected void handleProcessOrderRequest(OAMessage mess, WebSocket conn) {
@@ -302,7 +317,7 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
         Boolean good = order != null;
         send(good, MsgType.PROCESS_ORDER_RESPONSE, conn);
         if (good)
-            broadcastOrderUpdate(order, true);
+            broadcastOrderUpdate(order, conn);
     }
 
     protected void handleCompleteItemRequest(OAMessage mess, WebSocket conn) {
@@ -314,7 +329,7 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
         Boolean good = ord != null;
         send(good, MsgType.COMPLETE_ITEM_RESPONSE, conn);
         if (good) 
-            broadcastOrderUpdate(ord, true);
+            broadcastOrderUpdate(ord, conn);
     }
 
     protected void handleStartUpEnvRequest(OAMessage mess, WebSocket conn) {
@@ -326,19 +341,19 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
         Boolean good = getWorkService().updateConfiguration(newConfig);
         send(good, MsgType.UPDATE_CONFIGURATION_RESPONSE, conn);
         if (good)
-            broadcastWorkService(true);
-    }
-
-    protected void handleWorkServiceRequest(OAMessage mess, WebSocket conn) {
-        send(getWorkService(), MsgType.WORKSERVICE_RESPONSE, conn);
+            broadcastWorkService(conn);
     }
 
     protected void handleAddOrderRequest(OAMessage mess, WebSocket conn) {
         Order order = mess.<Order>getPayload();
         Boolean good = workService.addOrder(order);
-        if (good)
-            broadcastOrderLists(true);
         send(good, MsgType.ADD_ORDER_RESPONSE, conn);
+        if (good)
+            broadcastNewOrder(order, conn);
+    }
+
+    protected void handleWorkServiceRequest(OAMessage mess, WebSocket conn) {
+        send(getWorkService(), MsgType.WORKSERVICE_RESPONSE, conn);
     }
 
     /*****************************************
@@ -366,13 +381,6 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
             Log.e(TAG, "Module not bound");
     }
 
-    protected void invokeModuleConfigurationUpdate() {
-		if (module != null)
-			module.onConfigurationUpdate(getWorkService().configuration);
-		else
-			Log.e(TAG, "Module not bound");
-	}
-
 
     /*****************************************
      * Various
@@ -385,7 +393,12 @@ public class OAWSServer extends AbstractWSServer implements OAConnection {
 
     protected void broadcast(Object object, MsgType msgType) {
         broadcast(OAMessage.newMsg(object, msgType));
+    }  
+    protected void broadcast(Object object, MsgType msgType, String requestor) {
+        broadcast(OAMessage.newMsg(object, msgType, requestor));
     }
+
+    
 
     
 }

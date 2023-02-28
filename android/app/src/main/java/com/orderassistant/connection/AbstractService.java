@@ -16,6 +16,7 @@ import android.app.NotificationManager;
 import android.app.NotificationChannel;
 import android.app.Activity;
 import com.orderassistant.connection.nsd.NsdServer;
+import com.orderassistant.utils.Utils;
 import com.orderassistant.R;
 import android.content.ServiceConnection;
 import android.content.ComponentName;
@@ -23,6 +24,7 @@ import com.facebook.react.bridge.Callback;
 
 
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
 import java.util.Timer;
 
@@ -39,16 +41,17 @@ public abstract class AbstractService extends Service implements OACheckable {
     public static final String TAG = "OA_Service";
     protected static final int WAIT_STEP_PREVIOUS_INSTANCE = 100;
 
-    protected boolean imForeground = false;
-    protected boolean imClosing = false;
+    protected AtomicBoolean imForeground;
     protected Intent intent;
 
 
     protected static AbstractService instance;
-    protected static boolean isInClosingState = false;
+    protected static AtomicBoolean isInClosingState = new AtomicBoolean(false);
 
     private static OAModule moduleParam;
     protected OAModule module;
+
+    private NetworkCallback wifiCallBack;
 
     protected static boolean startService(Activity activity, Intent intent,
      OAModule moduleParam) {
@@ -57,7 +60,9 @@ public abstract class AbstractService extends Service implements OACheckable {
 
         AbstractService.moduleParam = moduleParam;
         Context context = activity.getApplicationContext();
-        ComponentName name = context.startService(intent); 
+        new Thread(() -> {
+            ComponentName name = context.startService(intent); 
+		}).start();
         return true;
     }
 
@@ -67,34 +72,40 @@ public abstract class AbstractService extends Service implements OACheckable {
     protected abstract void onStopService();
 
     public boolean stopService() {
-        isInClosingState = true;
+        isInClosingState.set(true);
         return doStopService();
     }
 
     @Override
     public void onCreate() {
-        while (isInClosingState) {
+        waitForPrevoiusInstanceToClose();
+    }
+
+    private void waitForPrevoiusInstanceToClose() {
+        int steps = 20;
+        while (isInClosingState.get() && --steps > 0) {
             Log.d(TAG, "Waiting for previous instance to close");
             try {
                 Thread.sleep(WAIT_STEP_PREVIOUS_INSTANCE);
-            } catch (Exception e) {}
+            } catch (Exception ignored) {}
         }
-        if (instance != null)
-            Log.e(TAG, "Service didn't close properly!");
-
-        instance = this;
-        imForeground = false;
-        imClosing = false;
-        module = AbstractService.moduleParam;
+        if (steps <= 0 || instance != null)
+            Log.e(TAG, "Previous service instance didn't close properly");
+        isInClosingState.set(false);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        instance = this;
+        imForeground = new AtomicBoolean(false);
+        module = AbstractService.moduleParam;
+
         this.intent = intent;
         if (serviceOnCreate(intent)) {
             listenToWifiChanges();
             Log.d(TAG, "onCreate successfull");
-        }
+        } else 
+            stopService();
         return START_NOT_STICKY;
     }
 
@@ -103,17 +114,17 @@ public abstract class AbstractService extends Service implements OACheckable {
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                 .build();
         ConnectivityManager connectivityManager = getSystemService(ConnectivityManager.class);
-        NetworkCallback networkCallback = new NetworkCallback() {
+        wifiCallBack = new NetworkCallback() {
 
             @Override
             public void onLost(Network network) {
-                Log.d(TAG, "lost");
+                Log.d(TAG, "Lost network: " + network);
                 module.onWifiLost();
                 stopService();
             }
 
         };
-        connectivityManager.registerNetworkCallback(request, networkCallback); // For listen
+        connectivityManager.registerNetworkCallback(request, wifiCallBack); // For listen
     }
 
     protected void makeServiceForeground() {
@@ -137,7 +148,7 @@ public abstract class AbstractService extends Service implements OACheckable {
 
         // Notification ID cannot be 0.
         startForeground(1, notification);
-        imForeground = true;
+        imForeground.set(true);
     }
 
     @Override
@@ -153,9 +164,9 @@ public abstract class AbstractService extends Service implements OACheckable {
     }
 
     private boolean doStopService() {
-        if (!isInClosingState) // If app is killed from recent app
-            isInClosingState = true;
-
+        boolean killedFromRecentApps = isInClosingState.compareAndSet(false, true);
+    
+        unregisterWifiCallback(); 
         onStopService();
         stopServiceForeground();
         stopSelf();
@@ -164,18 +175,24 @@ public abstract class AbstractService extends Service implements OACheckable {
         return true;
     }
 
+    private void unregisterWifiCallback() {
+        if (wifiCallBack != null) {
+            ConnectivityManager connectivityManager = getSystemService(ConnectivityManager.class);
+            if (connectivityManager != null)
+                connectivityManager.unregisterNetworkCallback(wifiCallBack);
+        }
+    }
+
     @Override
     public void onDestroy() {
         instance = null;
-        isInClosingState = false;
+        isInClosingState.set(false);
         Log.d(TAG, "Service stopped");
     }
 
     protected void stopServiceForeground() {
-        if (imForeground) {
+        if (imForeground.compareAndSet(false, true)) 
             stopForeground(Service.STOP_FOREGROUND_REMOVE);
-            imForeground = false;
-        }
     }
 
     protected boolean isCheckableGood(OACheckable checkable) {

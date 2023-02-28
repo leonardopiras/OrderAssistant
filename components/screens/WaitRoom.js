@@ -6,12 +6,10 @@ import {
   FlatList,
 } from 'react-native';
 
-import Toast from 'react-native-toast-message';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 
 
 import styles from '@styles/DefaultStyles';
-import CustomDialog from '@components/CustomDialog';
 import TextInputDialog from '@components/TextInputDialog';
 import Header, { screens } from "@components/Header";
 import OAButton from '@components/OAButton';
@@ -31,6 +29,7 @@ const clientStartUpCode = {
   TIMER_EXCEDEED: 4,
   ECONNREFUSED: 5,
   ERROR_ON_CLOSE: 6,
+  ERROR_WIFI: 7
 }
 
 const serverStartUpCode = {
@@ -156,10 +155,12 @@ export default function WaitRoom({ navigation, route }) {
   };
 
   const startServerPreviousWorkService = () => {
+    OAFullScreen.setLoading(true);
     OAMainModule.startServerPreviousWorkService(handleWorkServiceCreationReturn);
   }
 
   const handleWorkServiceCreationReturn = (good, exitCode) => {
+    OAFullScreen.setLoading(false);
     if (good) {
       goToWorkStationsRoom();
     } else {
@@ -222,6 +223,8 @@ export default function WaitRoom({ navigation, route }) {
       return sentences.clientErrorConnRefused;
     else if (code === clientStartUpCode.ERROR_ON_CLOSE)
       return sentences.errorClientOnClose;
+    else if (code === clientStartUpCode.ERROR_WIFI)
+      return sentences.serverErrorWifi;
   }
 
   const getServerErrorCauseStartUp = (code) => {

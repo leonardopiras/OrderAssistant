@@ -21,6 +21,8 @@ import OAToggle from '@components/OAToggle';
 import OAViewPager from '@components/OAViewPager';
 import Item from '@components/Item';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import OAFullScreen from '@components/OAFullScreen';
+
 
 
 
@@ -268,6 +270,7 @@ export default function EditOrder({ route }) {
   const trySaveAndExit = (overWritePayment) => {
     if (itemList && itemList.length > 0) {
       if (preferences.hasTables && checkTableAndSeats()) {
+        OAFullScreen.setLoading(true);
         if (createMode)
           addOrderAndExit();
         else 
@@ -293,26 +296,29 @@ export default function EditOrder({ route }) {
   const updateOrderAndExit = (overWritePayment) => {
     const paid = typeof overWritePayment === "boolean" ? overWritePayment : isPaid;
     OAMainModule.updateOrder(itemList, comment, table, paid, isProcessed,
-       parseInt(seats), editOrder.coverCharge,
-       editOrder.id, editOrder.birthDate, editOrder.processDate,  (good) => {
-      if (good) {
-        Toast.show({
-          type: 'success', 
-          text1: sentences.orderSuccessFullyUpdated
-        });
-        Header.goBack();
-      } else {
-        Toast.show({
-          type: 'error', 
-          text1: sentences.orderNotUpdated
-        });
-      }
-    });
+      parseInt(seats), editOrder.coverCharge,
+      editOrder.id, editOrder.birthDate, editOrder.processDate, (good) => {
+        OAFullScreen.setLoading(false);
+        if (good) {
+          Toast.show({
+            type: 'success',
+            text1: sentences.orderSuccessFullyUpdated
+          });
+          Header.goBack();
+        } else {
+          Toast.show({
+            type: 'error',
+            text1: sentences.orderNotUpdated
+          });
+        }
+      });
   }
 
   const addOrderAndExit = () => {
     OAMainModule.addOrder(itemList, comment, table, isPaid, 
       isProcessed, parseInt(seats), preferences.coverCharge, (good) => {
+        OAFullScreen.setLoading(false);
+
       if (good) {
         Toast.show({
           type: 'success', 

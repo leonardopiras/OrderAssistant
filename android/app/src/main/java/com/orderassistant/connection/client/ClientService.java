@@ -26,8 +26,7 @@ import com.orderassistant.connection.nsd.NsdClient;
 import com.orderassistant.connection.serverDetails.ServerDetails;
 import com.orderassistant.connection.serverDetails.InfoClient;
 import com.orderassistant.models.*;
-
-
+import com.orderassistant.utils.Utils;
 
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -66,7 +65,8 @@ public class ClientService extends AbstractService {
         PARSER_ERROR(3),
         TIMER_EXCEDEED(4),
         ECONNREFUSED(5),
-        ERROR_ON_CLOSE(6);
+        ERROR_ON_CLOSE(6),
+        ERROR_WIFI(7);
 
         int val;
         StartUpReturnCode(int val) {
@@ -114,11 +114,16 @@ public class ClientService extends AbstractService {
     @Override
     protected boolean serviceOnCreate(Intent intent) {
         if (setStartUpParamsFromIntent(intent)) {
-            this.startUpFinished = new AtomicBoolean(false); 
-            String deviceId = getDeviceId();
-            this.wsClient = new OAWSClient(address, port, username, deviceId, this, module);
+            if (Utils.isWifiGood((Context) this)) {
+                this.startUpFinished = new AtomicBoolean(false);
+                String deviceId = getDeviceId();
+                this.wsClient = new OAWSClient(address, port, username, deviceId, this, module);
+                return true;
+            } else { // No Wifi
+                module.onFinishStartUpClient(false, ERROR_WIFI.val, null);
+            }   
         }
-        return isCheckableGood(wsClient);
+        return false;
     }
 
     public synchronized boolean onFinishStartUp(boolean good, StartUpReturnCode code) {
@@ -145,7 +150,8 @@ public class ClientService extends AbstractService {
     @Override
     protected void onStopService() {
         /* salva tutto */
-        wsClient.stopClient();
+        if (wsClient != null)
+            wsClient.stopClient();
     }
 
    

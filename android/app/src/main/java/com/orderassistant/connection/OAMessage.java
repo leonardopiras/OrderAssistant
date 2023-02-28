@@ -17,6 +17,7 @@ public class OAMessage implements Serializable {
 
     public MsgType type; 
     public Object payload; 
+    public String requestor; // For broadcast
 
     public static enum MsgType {
         STARTUP_ENV_REQUEST,
@@ -29,6 +30,7 @@ public class OAMessage implements Serializable {
         ORDER_LISTS_UPDATE,
         ADD_ORDER_REQUEST,
         ADD_ORDER_RESPONSE,
+        NEW_ORDER,
         UPDATE_CONFIGURATION_REQUEST, 
         UPDATE_CONFIGURATION_RESPONSE,
         COMPLETE_ITEM_REQUEST,
@@ -48,9 +50,10 @@ public class OAMessage implements Serializable {
     }
 
 
-    public OAMessage(MsgType type, Object object) {
+    public OAMessage(MsgType type, Object object, String requestor) {
         this.type = type;
         this.payload =  object;
+        this.requestor = requestor;
     }
 
     public <T> T getPayload() {
@@ -74,9 +77,12 @@ public class OAMessage implements Serializable {
     }
 
     public static byte[] newMsg(Object payload, MsgType msgType) {
-        OAMessage msg = new OAMessage(msgType, payload);
-        return msg.toByteArray();
+        return newMsg(payload, msgType, null);
+    }
 
+    public static byte[] newMsg(Object payload, MsgType msgType, String requestor) {
+        OAMessage msg = new OAMessage(msgType, payload, requestor);
+        return msg.toByteArray();
     }
 
     public static OAMessage fromByteBuffer(ByteBuffer buffer) {

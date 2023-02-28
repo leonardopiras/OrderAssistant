@@ -132,14 +132,16 @@ export default function WorkService({navigation, route}) {
   }
 
   const stopService = () => {
-    OAFullScreen.showDialog({
-      type: "confirmAction",
-      description: sentences.confirmStop,
-      onPressPrimaryBtn: () => {
-        NativeModules.OAMainModule.stopWorkService();
-        goToWaitRoomResetNavigation();
-      }
-  });
+    setTimeout(() => {
+      OAFullScreen.showDialog({
+        type: "confirmAction",
+        description: sentences.confirmStop,
+        onPressPrimaryBtn: () => {
+          NativeModules.OAMainModule.stopWorkService();
+          goToWaitRoomResetNavigation();
+        }
+    });
+    }, 100);
   }
 
   const goToWorkStation = (workStationName) => {

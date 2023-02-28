@@ -447,7 +447,7 @@ export default function ManageConfiguration({ route, navigation }) {
         UI_2={isOnWS ? UIScreen3() : UIScreen2()}
         UI_3={isOnWS ? UIScreen4() : UIScreen3()}
         UI_4={isOnWS ? null : UIScreen4()}
-        numOfPages={4}
+        numOfPages={isOnWS ? 3 : 4}
         selectedIndx={selectedViewPagerIndx}
         setSelectedIndx={setSelectedViewPagerIndx}
         showBtns={true}

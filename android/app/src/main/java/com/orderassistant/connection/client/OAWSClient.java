@@ -129,10 +129,8 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 	public void onClose(int code, String reason, boolean remote) {
 		Log.d(TAG,"closed with exit code " + code + " additional info: " + reason);
 		this.isGood = false;
-		if (code == EXIT_CODE_SERVER_LOST) 
+		if (!service.onFinishStartUp(false, StartUpReturnCode.ERROR_ON_CLOSE))
 			invokeModuleOnServerLost();
-				
-		service.onFinishStartUp(false, StartUpReturnCode.ERROR_ON_CLOSE);
 	}
 
 	@Override
@@ -274,6 +272,9 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 			case UPDATE_CONFIGURATION_RESPONSE:
 				handleUpdateConfigurationResponse(mess);
 				break;
+			case NEW_ORDER:
+				handleNewOrder(mess);
+				break;
 			case ORDER_UPDATE:
 				handleOrderUpdate(mess);
 				break;
@@ -334,7 +335,16 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 	protected void handleOrderListsUpdate(OAMessage mess) {
 		OrderLists orders = mess.<OrderLists>getPayload();
 		Boolean res = getWorkService().updateLists(orders);
-		invokeModuleOrderListsUpdate();		
+		if (imNotTheRequestor(mess))
+			invokeModuleOrderListsUpdate();		
+	}
+
+	protected void handleNewOrder(OAMessage mess) {
+		Order order = mess.<Order>getPayload();
+		if (getWorkService().addOrder(order) && imNotTheRequestor(mess)) 
+			invokeModuleOrderListsUpdate();
+		else 
+			send(MsgType.ORDER_LISTS_REQUEST);
 	}
 
 	protected void handleJoinOrdersResponse(OAMessage mess) {
@@ -367,7 +377,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 
 	protected void handleOrderUpdate(OAMessage mess) {
 		Order order = mess.<Order>getPayload();
-		if (getWorkService().updateOrder(order))
+		if (getWorkService().updateOrder(order) && imNotTheRequestor(mess))
 			invokeModuleOrderUpdate(order);
 		else
 			send(MsgType.ORDER_LISTS_REQUEST);
@@ -375,10 +385,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 
 
 	protected void handleAddOrderResponse(OAMessage mess) {
-		Boolean result = mess.<Boolean>getPayload();
-		Callback addOrderResultCallback = getCallback(MsgType.ADD_ORDER_RESPONSE);
-		if (addOrderResultCallback != null)
-			addOrderResultCallback.invoke(result);
+		handleBooleanResponse(mess, MsgType.ADD_ORDER_RESPONSE, MsgType.ORDER_LISTS_REQUEST);
 	}
 
 	protected void handleWorkServiceUpdate(OAMessage mess) {
@@ -398,7 +405,8 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 	protected void updateWorkService(OAMessage mess) {
 		WorkService newWorkService = mess.<WorkService>getPayload();
 		workService = newWorkService;
-		invokeModuleWorkServiceUpdate();
+		if (imNotTheRequestor(mess))
+			invokeModuleWorkServiceUpdate();
 	}
 
 	private void handleBooleanResponse(OAMessage mess, MsgType cbType, MsgType msgOnResultFail) {
@@ -433,13 +441,6 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 		else
 			Log.e(TAG, "Module not bound");
 	}
-
-	protected void invokeModuleConfigurationUpdate() {
-		if (module != null)
-			module.onConfigurationUpdate(getWorkService().configuration);
-		else
-			Log.e(TAG, "Module not bound");
-	}	
 
 	protected void invokeModuleOnServerLost() {
 		if (module != null)
@@ -487,6 +488,10 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 
 	 protected void send(MsgType msgType) {
 		send(OAMessage.newMsg(msgType));
+	 }
+
+	 protected boolean imNotTheRequestor(OAMessage mess) {
+		return mess.requestor == null || !mess.requestor.equals(username);
 	 }
 
 	 private void removeInstance() {
