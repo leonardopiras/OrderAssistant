@@ -8,6 +8,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.Callback;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.UUID;
@@ -71,6 +72,8 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 	protected boolean isGood = true;
 
 	protected String deviceId;
+
+	protected AtomicBoolean isWaitingCallback = new AtomicBoolean(false);
 
 
 	public OAWSClient(String address, int port, String username, String deviceId, ClientService service, OAModule module) {
@@ -335,13 +338,13 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 	protected void handleOrderListsUpdate(OAMessage mess) {
 		OrderLists orders = mess.<OrderLists>getPayload();
 		Boolean res = getWorkService().updateLists(orders);
-		if (imNotTheRequestor(mess))
+		if (canInvokeModuleUpdate(mess))
 			invokeModuleOrderListsUpdate();		
 	}
 
 	protected void handleNewOrder(OAMessage mess) {
 		Order order = mess.<Order>getPayload();
-		if (getWorkService().addOrder(order) && imNotTheRequestor(mess)) 
+		if (getWorkService().addOrder(order) && canInvokeModuleUpdate(mess)) 
 			invokeModuleOrderListsUpdate();
 		else 
 			send(MsgType.ORDER_LISTS_REQUEST);
@@ -377,7 +380,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 
 	protected void handleOrderUpdate(OAMessage mess) {
 		Order order = mess.<Order>getPayload();
-		if (getWorkService().updateOrder(order) && imNotTheRequestor(mess))
+		if (getWorkService().updateOrder(order) && canInvokeModuleUpdate(mess))
 			invokeModuleOrderUpdate(order);
 		else
 			send(MsgType.ORDER_LISTS_REQUEST);
@@ -385,7 +388,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 
 
 	protected void handleAddOrderResponse(OAMessage mess) {
-		handleBooleanResponse(mess, MsgType.ADD_ORDER_RESPONSE, MsgType.ORDER_LISTS_REQUEST);
+		handleBooleanResponse(mess, MsgType.ADD_ORDER_RESPONSE, null);
 	}
 
 	protected void handleWorkServiceUpdate(OAMessage mess) {
@@ -405,7 +408,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 	protected void updateWorkService(OAMessage mess) {
 		WorkService newWorkService = mess.<WorkService>getPayload();
 		workService = newWorkService;
-		if (imNotTheRequestor(mess))
+		if (canInvokeModuleUpdate(mess))
 			invokeModuleWorkServiceUpdate();
 	}
 
@@ -457,6 +460,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 	 *****************************************/
 
 	protected boolean invokeCallBack(MsgType type, Boolean result) {
+		isWaitingCallback.set(false);
 		Callback cb = getCallback(type);
 		if (cb != null)
 			cb.invoke(result);
@@ -473,6 +477,7 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 	}
 
 	protected void setWaitingCallback(MsgType type, Callback cb) {
+		isWaitingCallback.set(true);
 		if (callbacksMap.put(type, cb) != null)
 			Log.e(TAG, "Callback override on " + type);
 	}
@@ -490,8 +495,9 @@ public class OAWSClient extends WebSocketClient implements OAConnection, OACheck
 		send(OAMessage.newMsg(msgType));
 	 }
 
-	 protected boolean imNotTheRequestor(OAMessage mess) {
-		return mess.requestor == null || !mess.requestor.equals(username);
+	 protected boolean canInvokeModuleUpdate(OAMessage mess) {
+		return !isWaitingCallback.get() ||
+		(mess.requestor == null || !mess.requestor.equals(username));
 	 }
 
 	 private void removeInstance() {
